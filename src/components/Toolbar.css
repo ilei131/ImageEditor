@@ -1,0 +1,98 @@
+.toolbar {
+  background: transparent;
+  padding: 0;
+  user-select: none;
+  z-index: 100;
+}
+
+.toolbar-menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.toolbar-item {
+  position: relative;
+  display: inline-block;
+}
+
+.toolbar-button {
+  background: transparent;
+  border: none;
+  color: #333;
+  padding: 10px 15px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.toolbar-button:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #212121;
+}
+
+.toolbar-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toolbar-item.open > .toolbar-button {
+  background: rgba(0, 0, 0, 0.15);
+  color: #212121;
+}
+
+.submenu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  list-style: none;
+  margin: 0;
+  padding: 5px 0;
+  min-width: 180px;
+  z-index: 1000;
+}
+
+.submenu-item {
+  padding: 8px 15px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  display: flex;
+  align-items: center;
+}
+
+.submenu-item:hover,
+.submenu-item.hovered {
+  background: linear-gradient(to right, #2196f3, #1976d2);
+}
+
+.submenu-label {
+  color: #333;
+  font-size: 14px;
+  flex-grow: 1;
+}
+
+.submenu-item:hover .submenu-label,
+.submenu-item.hovered .submenu-label {
+  color: white;
+}
+
+/* 箭头指示器 */
+.toolbar-item.open > .toolbar-button::after {
+  content: '';
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid #333;
+  margin-left: 8px;
+}

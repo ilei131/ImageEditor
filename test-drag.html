@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拖拽测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .drag-area {
+            width: 300px;
+            height: 300px;
+            border: 2px dashed #007bff;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: #ffffff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .drag-area.drag-over {
+            border-color: #28a745;
+            background-color: #f8fff8;
+        }
+        h2 {
+            margin-bottom: 10px;
+        }
+        p {
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="drag-area">
+        <h2>拖拽测试</h2>
+        <p>将图片拖拽到此处</p>
+    </div>
+    <script>
+        // 添加事件监听器到document
+        console.log("Adding document drag event listeners...");
+        
+        document.addEventListener('dragover', (e) => {
+            console.log("Document drag over event!");
+            e.preventDefault();
+        }, true);
+        
+        document.addEventListener('dragenter', (e) => {
+            console.log("Document drag enter event!");
+        }, true);
+        
+        document.addEventListener('dragleave', (e) => {
+            console.log("Document drag leave event!");
+        }, true);
+        
+        document.addEventListener('drop', (e) => {
+            console.log("Document drop event!");
+            e.preventDefault();
+            console.log("Files:", e.dataTransfer.files);
+        }, true);
+        
+        // 添加事件监听器到拖拽区域
+        const dragArea = document.querySelector('.drag-area');
+        
+        dragArea.addEventListener('dragover', (e) => {
+            console.log("Drag area drag over event!");
+            e.preventDefault();
+            dragArea.classList.add('drag-over');
+        }, true);
+        
+        dragArea.addEventListener('dragenter', (e) => {
+            console.log("Drag area drag enter event!");
+            e.preventDefault();
+            dragArea.classList.add('drag-over');
+        }, true);
+        
+        dragArea.addEventListener('dragleave', (e) => {
+            console.log("Drag area drag leave event!");
+            dragArea.classList.remove('drag-over');
+        }, true);
+        
+        dragArea.addEventListener('drop', (e) => {
+            console.log("Drag area drop event!");
+            e.preventDefault();
+            dragArea.classList.remove('drag-over');
+            
+            const files = Array.from(e.dataTransfer.files);
+            console.log("Dropped files:", files);
+            
+            if (files.length > 0) {
+                alert(`成功拖拽了${files.length}个文件`);
+            }
+        }, true);
+    </script>
+</body>
+</html>

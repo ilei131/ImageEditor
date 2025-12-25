@@ -1,0 +1,148 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { open } from '@tauri-apps/plugin-dialog';
+import { listen, TauriEvent, UnlistenFn } from '@tauri-apps/api/event';
+
+interface DragDropEventPayload {
+  paths: string[];
+  position: { x: number; y: number };
+}
+
+interface DragDropDetectorProps {
+  onImageDrop: (file: File | string) => void;
+  onDragStateChange?: (isDragging: boolean) => void;
+}
+
+const DragDropDetector: React.FC<DragDropDetectorProps> = ({ onImageDrop, onDragStateChange }) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const detectorRef = useRef<HTMLDivElement>(null);
+  
+  // Refs for unlisten functions
+  const dragEnterUnlistenRef = useRef<UnlistenFn | null>(null);
+  const dragLeaveUnlistenRef = useRef<UnlistenFn | null>(null);
+  const dragOverUnlistenRef = useRef<UnlistenFn | null>(null);
+  const dragDropUnlistenRef = useRef<UnlistenFn | null>(null);
+
+  // 使用Tauri 2的拖拽事件监听
+  useEffect(() => {
+    console.log("DragDropDetector: useEffect mounted");
+    
+    // 设置拖拽事件监听器
+    const setupDragListeners = async () => {
+      // 监听拖拽开始事件
+      dragEnterUnlistenRef.current = await listen(TauriEvent.DRAG_ENTER, () => {
+        console.log("DragDropDetector: TauriEvent.DRAG_ENTER triggered");
+        setIsDragging(true);
+        if (onDragStateChange) {
+          onDragStateChange(true);
+        }
+      });
+
+      // 监听拖拽离开事件
+      dragLeaveUnlistenRef.current = await listen(TauriEvent.DRAG_LEAVE, () => {
+        console.log("DragDropDetector: TauriEvent.DRAG_LEAVE triggered");
+        setIsDragging(false);
+        if (onDragStateChange) {
+          onDragStateChange(false);
+        }
+      });
+
+      // 监听拖拽悬停事件
+      dragOverUnlistenRef.current = await listen(TauriEvent.DRAG_OVER, () => {
+        console.log("DragDropDetector: TauriEvent.DRAG_OVER triggered");
+        // 可以在这里设置拖拽效果
+      });
+
+      // 监听拖拽完成事件
+      dragDropUnlistenRef.current = await listen<DragDropEventPayload>(TauriEvent.DRAG_DROP, (event) => {
+        console.log("DragDropDetector: TauriEvent.DRAG_DROP triggered");
+        console.log("DragDropDetector: DragDropEventPayload:", event.payload);
+        
+        setIsDragging(false);
+        if (onDragStateChange) {
+          onDragStateChange(false);
+        }
+
+        // 获取拖拽的文件路径
+        const { paths } = event.payload;
+        if (paths && paths.length > 0) {
+          const filePath = paths[0];
+          console.log("Dropped file path:", filePath);
+          
+          // 检查文件扩展名
+          const extension = filePath.split('.').pop()?.toLowerCase();
+          const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp'];
+          
+          if (extension && imageExtensions.includes(extension)) {
+            // 将文件路径传递给父组件
+            onImageDrop(filePath);
+          } else {
+            alert('请选择图片文件');
+          }
+        }
+      });
+    };
+
+    // 执行设置监听器函数
+    setupDragListeners();
+
+    // 处理点击选择文件
+    const handleClick = async () => {
+      console.log("DragDropDetector: handleClick triggered");
+      try {
+        const selected = await open({
+          directory: false,
+          multiple: false,
+          filters: [
+            { name: "Images", extensions: ["jpg", "jpeg", "png", "gif", "bmp"] }
+          ],
+          title: "选择图片"
+        });
+        
+        if (selected && typeof selected === "string") {
+          // 直接将路径传递给父组件处理
+          onImageDrop(selected);
+        }
+      } catch (error) {
+        console.error("Failed to select image:", error);
+      }
+    };
+
+    // 添加点击事件监听器
+    const element = detectorRef.current;
+    if (element) {
+      element.addEventListener('click', handleClick);
+    }
+
+    // 清理事件监听器
+    return () => {
+      console.log("DragDropDetector: useEffect unmounted");
+      if (dragEnterUnlistenRef.current) dragEnterUnlistenRef.current();
+      if (dragLeaveUnlistenRef.current) dragLeaveUnlistenRef.current();
+      if (dragOverUnlistenRef.current) dragOverUnlistenRef.current();
+      if (dragDropUnlistenRef.current) dragDropUnlistenRef.current();
+      if (element) {
+        element.removeEventListener('click', handleClick);
+      }
+    };
+  }, [onImageDrop, onDragStateChange]);
+
+
+  return (
+    <div
+      ref={detectorRef}
+      className={`drag-drop-detector ${isDragging ? 'dragging' : ''}`}
+      // 移除React事件监听，使用原生DOM事件
+    >
+      <div className="drag-drop-content">
+        <div className="drag-drop-icon">
+          📁
+        </div>
+        <h3>拖拽图片到此处</h3>
+        <p>支持 JPG、PNG、GIF 等图片格式</p>
+        <p className="drag-drop-hint">或点击选择图片</p>
+      </div>
+    </div>
+  );
+};
+
+export default DragDropDetector;
