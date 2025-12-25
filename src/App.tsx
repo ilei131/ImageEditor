@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
-import { readFile, writeFile } from "@tauri-apps/plugin-fs";
+import { readFile } from "@tauri-apps/plugin-fs";
 import "./App.css";
 import Toolbar from "./components/Toolbar";
 import ResizeDialog from "./components/ResizeDialog";
@@ -32,17 +32,11 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [newWidth, setNewWidth] = useState<number>(0);
   const [newHeight, setNewHeight] = useState<number>(0);
-  const [maintainAspectRatio, setMaintainAspectRatio] = useState(true);
+
   const [cropArea, setCropArea] = useState<CropArea | null>(null);
   const [isCropping, setIsCropping] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
-  
-
-  const [activeTool, setActiveTool] = useState<string | null>(null);
   const [showResizeDialog, setShowResizeDialog] = useState(false);
-  const [showCropDialog, setShowCropDialog] = useState(false);
-  
-  const welcomeScreenRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   
@@ -264,7 +258,7 @@ function App() {
   };
   
   // 调整图片分辨率
-  const handleResizeConfirm = async (width: number, height: number, maintainRatio: boolean) => {
+  const handleResizeConfirm = async (width: number, height: number) => {
     if (!selectedImage) return;
     
     setLoading(true);
@@ -346,7 +340,7 @@ function App() {
       if (savedPath) {
         setLoading(true);
         // 使用后端保存图片为不同格式
-        const result = await invoke<boolean>("save_as", {
+        await invoke<boolean>("save_as", {
           path: selectedImage.path,
           output_path: savedPath
         });
@@ -355,28 +349,6 @@ function App() {
     } catch (error) {
       console.error("Failed to save image:", error);
       setLoading(false);
-    }
-  };
-
-  // 调整宽度
-  const handleWidthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const width = parseInt(e.target.value);
-    setNewWidth(width);
-    
-    if (maintainAspectRatio && selectedImage) {
-      const aspectRatio = selectedImage.height / selectedImage.width;
-      setNewHeight(Math.round(width * aspectRatio));
-    }
-  };
-
-  // 调整高度
-  const handleHeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const height = parseInt(e.target.value);
-    setNewHeight(height);
-    
-    if (maintainAspectRatio && selectedImage) {
-      const aspectRatio = selectedImage.width / selectedImage.height;
-      setNewWidth(Math.round(height * aspectRatio));
     }
   };
 

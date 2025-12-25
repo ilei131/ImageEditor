@@ -31,9 +31,7 @@ const ImageDisplay = forwardRef<HTMLImageElement, ImageDisplayProps>(({
   isDraggingOver = false,
   imageInfo,
   isCropping = false,
-  onCropAreaChange,
-  onCropApply,
-  onCropCancel
+  onCropAreaChange
 }, ref) => {
   // 裁剪区域状态
   const [cropArea, setCropArea] = useState<CropAreaInfo | null>(null);

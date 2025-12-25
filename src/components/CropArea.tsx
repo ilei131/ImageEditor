@@ -12,7 +12,7 @@ interface CropAreaProps {
     height: number;
   };
   onCropAreaChange: (cropArea: { x: number; y: number; width: number; height: number }) => void;
-  previewRef: React.RefObject<HTMLDivElement>;
+  previewRef: React.RefObject<HTMLDivElement | null>;
   imageRef: React.RefObject<HTMLImageElement>;
 }
 
@@ -151,12 +151,11 @@ const CropArea: React.FC<CropAreaProps> = ({
     setCropStart({ x: mouseX, y: mouseY });
   };
   
-  // 使用ref来跟踪上一次处理鼠标移动的时间和位置
-  const lastMouseMoveTime = useRef<number>(0);
+  // 使用ref来跟踪上一次处理鼠标移动的位置
   const lastProcessedPosition = useRef<{ x: number; y: number } | null>(null);
 
-  // 处理鼠标移动事件
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+  // 处理鼠标移动事件（原生DOM事件）
+  const handleMouseMoveNative = useCallback((e: MouseEvent) => {
     // 更新光标样式
     if (!cropRef.current || !imageRef.current || !previewRef.current) return;
     
@@ -305,13 +304,18 @@ const CropArea: React.FC<CropAreaProps> = ({
     };
     
     document.addEventListener('mouseup', handleGlobalMouseUp);
-    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mousemove', handleMouseMoveNative);
     
     return () => {
       document.removeEventListener('mouseup', handleGlobalMouseUp);
-      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mousemove', handleMouseMoveNative);
     };
-  }, [handleMouseMove]);
+  }, [handleMouseMoveNative]);
+  
+  // 处理鼠标移动事件（React事件）
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    handleMouseMoveNative(e.nativeEvent);
+  }, [handleMouseMoveNative]);
   
   return (
     <div 

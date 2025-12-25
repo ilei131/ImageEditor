@@ -1,18 +1,15 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use std::collections::HashMap;
 use std::fs;
-use std::io;
 use std::io::Cursor;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
-use rayon::prelude::*;
 
 // 导入图片处理库
 use image::io::Reader as ImageReader;
-use image::{DynamicImage, GenericImageView, ImageResult};
+use image::{ GenericImageView };
 
 // 定义图片信息结构体
 #[derive(Serialize, Deserialize, Debug)]
@@ -245,17 +242,6 @@ pub struct FileInfo {
     pub size: u64,
     pub is_directory: bool,
     pub modified_time: u64,
-}
-
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
-#[tauri::command]
-fn get_disks() -> Result<Vec<DiskInfo>, String> {
-    // 这个函数可以保留，但我们的新应用可能不会使用它
-    Ok(Vec::new())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
