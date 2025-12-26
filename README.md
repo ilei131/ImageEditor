@@ -1,11 +1,14 @@
 # ImageEditor
 ## debug
+```
 npm install
 npm run tauri dev
+```
 ## build
+```
 npm install
 npm run tauri build
-
+```
 ## Function
 - Crop the image
 - Resize the image
