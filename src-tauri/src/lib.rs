@@ -190,15 +190,49 @@ fn crop_image(path: &str, x: f32, y: f32, width: f32, height: f32) -> Result<boo
 }
 // 保存图片为不同格式
 #[tauri::command]
-fn save_as(path: &str, output_path: &str) -> Result<bool, String> {
+fn save_as(path: &str, output: &str) -> Result<bool, String> {
     // 打开图片
     let img = ImageReader::open(path)
         .map_err(|e| format!("Failed to open image: {}", e))?
         .decode()
         .map_err(|e| format!("Failed to decode image: {}", e))?;
     
+    // 获取输出文件的扩展名
+    let output_path = Path::new(output);
+    let ext = output_path.extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    
+    // 检查是否是ICO格式，如果是则需要调整尺寸
+    let processed_img = if ext == "ico" {
+        let (width, height) = img.dimensions();
+        
+        // ICO格式要求宽度和高度都不超过256像素
+        if width > 256 || height > 256 {
+            // 计算新的尺寸，保持宽高比
+            let scale_factor = if width > height {
+                256.0 / width as f32
+            } else {
+                256.0 / height as f32
+            };
+            
+            let new_width = (width as f32 * scale_factor).round() as u32;
+            let new_height = (height as f32 * scale_factor).round() as u32;
+            
+            // 调整图片尺寸
+            img.resize(new_width, new_height, image::imageops::FilterType::Triangle)
+        } else {
+            // 尺寸已经符合要求，直接使用原图
+            img
+        }
+    } else {
+        // 不是ICO格式，直接使用原图
+        img
+    };
+    
     // 保存为目标格式
-    img.save(output_path)
+    processed_img.save(output)
         .map_err(|e| format!("Failed to save image: {}", e))?;
     
     Ok(true)

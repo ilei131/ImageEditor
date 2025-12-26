@@ -37,6 +37,7 @@ function App() {
   const [isCropping, setIsCropping] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showResizeDialog, setShowResizeDialog] = useState(false);
+  const [isBooting] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   
@@ -48,6 +49,16 @@ function App() {
       // 确保没有残留的全局事件监听
     };
   }, []);
+
+  // // 启动页面过渡逻辑
+  // useEffect(() => {
+  //   // 设置启动页面显示时间（1秒）
+  //   const timer = setTimeout(() => {
+  //     setIsBooting(false);
+  //   }, 100);
+
+  //   return () => clearTimeout(timer);
+  // }, []);
   
 
 
@@ -331,18 +342,20 @@ function App() {
         filters: [
           { name: "PNG", extensions: ["png"] },
           { name: "JPEG", extensions: ["jpg", "jpeg"] },
-          { name: "All Images", extensions: ["jpg", "jpeg", "png", "gif", "bmp"] }
+          { name: "ICO", extensions: ["ico"] },
+          { name: "All Images", extensions: ["jpg", "jpeg", "png", "gif", "bmp", "ico"] }
         ],
         title: "另存为",
         defaultPath: defaultName
       });
       
       if (savedPath) {
+        console.log("savedPath:" + savedPath);
         setLoading(true);
         // 使用后端保存图片为不同格式
         await invoke<boolean>("save_as", {
           path: selectedImage.path,
-          output_path: savedPath
+          output: savedPath
         });
         setLoading(false);
       }
@@ -405,7 +418,15 @@ function App() {
       </header>
 
       <main className="app-main">
-        {!selectedImage ? (
+        {isBooting ? (
+          <div className="welcome-screen">
+            <div className="welcome-container">
+              <div className="welcome-icon">🌸</div>
+              <h1 className="welcome-title">Hello</h1>
+              <div className="welcome-loader"></div>
+            </div>
+          </div>
+        ) : !selectedImage ? (
           <div className="welcome-content">
             <h2>欢迎使用</h2>
             <DragDropDetector 

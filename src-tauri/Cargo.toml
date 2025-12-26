@@ -32,5 +32,5 @@ tokio = { version = "1.35", features = ["rt", "rt-multi-thread"] }
 lazy_static = "1.4"
 parking_lot = "0.12"
 rand = "0.8"
-image = "0.24"
+image = { version = "0.24", features = ["ico"] }
 

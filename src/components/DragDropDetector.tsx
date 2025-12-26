@@ -135,7 +135,7 @@ const DragDropDetector: React.FC<DragDropDetectorProps> = ({ onImageDrop, onDrag
     >
       <div className="drag-drop-content">
         <div className="drag-drop-icon">
-          📁
+          🌸
         </div>
         <h3>拖拽图片到此处</h3>
         <p>支持 JPG、PNG、GIF 等图片格式</p>
