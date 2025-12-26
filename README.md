@@ -1,7 +1,17 @@
-# Tauri + React + Typescript
+# ImageEditor
+## debug
+npm install
+npm run tauri dev
+## build
+npm install
+npm run tauri build
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+## Function
+- Crop the image
+- Resize the image
+- Save the image in different formats (JPEG, PNG, ICO)
 
-## Recommended IDE Setup
-
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+## Screenshot
+![1](./screenshot/1.png)
+![2](./screenshot/2.png)
+![3](./screenshot/3.png)
