@@ -1,15 +1,15 @@
 # ImageEditor
-## debug
+## Debug
 ```
 npm install
 npm run tauri dev
 ```
-## build
+## Build
 ```
 npm install
 npm run tauri build
 ```
-## Function
+## Main Functions
 - Crop the image
 - Resize the image
 - Save the image in different formats (JPEG, PNG, ICO)

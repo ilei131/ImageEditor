@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './Toolbar.css';
+import { useI18n } from '../contexts/I18nContext';
 
 interface ToolbarItem {
   id: string;
@@ -35,24 +36,34 @@ const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, disabled = false }) => 
     };
   }, []);
 
+  const { t, language, setLanguage } = useI18n();
+
   // 工具栏数据结构
   const toolbarItems: ToolbarItem[] = [
     {
       id: 'file',
-      label: '文件',
+      label: t('toolbar.file'),
       children: [
-        { id: 'open', label: '打开图片' },
-        { id: 'save-as', label: '另存为' },
+        { id: 'open', label: t('toolbar.file.open') },
+        { id: 'save-as', label: t('toolbar.file.save-as') },
       ]
     },
     {
       id: 'edit',
-      label: '编辑',
+      label: t('toolbar.edit'),
       children: [
-        { id: 'resize', label: '修改分辨率' },
-        { id: 'toggle-crop', label: '裁剪图片' },
-        // { id: 'rotate', label: '旋转图片' },
-        // { id: 'flip', label: '翻转图片' },
+        { id: 'resize', label: t('toolbar.edit.resize') },
+        { id: 'toggle-crop', label: t('toolbar.edit.toggle-crop') },
+        // { id: 'rotate', label: t('toolbar.edit.rotate') },
+        // { id: 'flip', label: t('toolbar.edit.flip') },
+      ]
+    },
+    {
+      id: 'language',
+      label: language === 'zh-CN' ? '中文' : 'English',
+      children: [
+        { id: 'zh-CN', label: '中文' },
+        { id: 'en-US', label: 'English' },
       ]
     }
   ];
@@ -68,8 +79,13 @@ const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, disabled = false }) => 
         setOpenMenus([item.id]);
       }
     } else {
-      // 执行工具选择回调
-      onToolSelect(item.id);
+      // 处理语言切换
+      if (item.id === 'zh-CN' || item.id === 'en-US') {
+        setLanguage(item.id as 'zh-CN' | 'en-US');
+      } else {
+        // 执行工具选择回调
+        onToolSelect(item.id);
+      }
       // 关闭所有菜单
       setOpenMenus([]);
     }

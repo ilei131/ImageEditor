@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { listen, TauriEvent, UnlistenFn } from '@tauri-apps/api/event';
+import { useI18n } from '../contexts/I18nContext';
 
 interface DragDropEventPayload {
   paths: string[];
@@ -13,6 +14,7 @@ interface DragDropDetectorProps {
 }
 
 const DragDropDetector: React.FC<DragDropDetectorProps> = ({ onImageDrop, onDragStateChange }) => {
+  const { t } = useI18n();
   const [isDragging, setIsDragging] = useState(false);
   const detectorRef = useRef<HTMLDivElement>(null);
   
@@ -76,7 +78,7 @@ const DragDropDetector: React.FC<DragDropDetectorProps> = ({ onImageDrop, onDrag
             // 将文件路径传递给父组件
             onImageDrop(filePath);
           } else {
-            alert('请选择图片文件');
+            alert(t('dragDrop.error'));
           }
         }
       });
@@ -95,7 +97,7 @@ const DragDropDetector: React.FC<DragDropDetectorProps> = ({ onImageDrop, onDrag
           filters: [
             { name: "Images", extensions: ["jpg", "jpeg", "png", "gif", "bmp"] }
           ],
-          title: "选择图片"
+          title: t('app.selectImage')
         });
         
         if (selected && typeof selected === "string") {
@@ -137,9 +139,9 @@ const DragDropDetector: React.FC<DragDropDetectorProps> = ({ onImageDrop, onDrag
         <div className="drag-drop-icon">
           🌸
         </div>
-        <h3>拖拽图片到此处</h3>
-        <p>支持 JPG、PNG、GIF 等图片格式</p>
-        <p className="drag-drop-hint">或点击选择图片</p>
+        <h3>{t('dragDrop.title')}</h3>
+        <p>{t('dragDrop.supported')}</p>
+        <p className="drag-drop-hint">{t('dragDrop.hint')}</p>
       </div>
     </div>
   );

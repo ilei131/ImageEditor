@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './ResizeDialog.css';
+import { useI18n } from '../contexts/I18nContext';
 
 interface ResizeDialogProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ const ResizeDialog: React.FC<ResizeDialogProps> = ({
   currentWidth,
   currentHeight
 }) => {
+  const { t } = useI18n();
   const [width, setWidth] = useState(currentWidth);
   const [height, setHeight] = useState(currentHeight);
   const [maintainAspectRatio, setMaintainAspectRatio] = useState(true);
@@ -57,14 +59,14 @@ const ResizeDialog: React.FC<ResizeDialogProps> = ({
     <div className="dialog-overlay">
       <div className="dialog">
         <div className="dialog-header">
-          <h3>调整图片分辨率</h3>
+          <h3>{t('resizeDialog.title')}</h3>
           <button className="close-button" onClick={onClose}>×</button>
         </div>
         
         <div className="dialog-body">
           <div className="size-inputs">
             <div className="input-group">
-              <label>宽度:</label>
+              <label>{t('resizeDialog.width')}</label>
               <input
                 type="number"
                 value={width}
@@ -74,7 +76,7 @@ const ResizeDialog: React.FC<ResizeDialogProps> = ({
             </div>
             
             <div className="input-group">
-              <label>高度:</label>
+              <label>{t('resizeDialog.height')}</label>
               <input
                 type="number"
                 value={height}
@@ -91,17 +93,17 @@ const ResizeDialog: React.FC<ResizeDialogProps> = ({
                 checked={maintainAspectRatio}
                 onChange={(e) => setMaintainAspectRatio(e.target.checked)}
               />
-              保持宽高比
+              {t('resizeDialog.maintainRatio')}
             </label>
           </div>
         </div>
         
         <div className="dialog-footer">
           <button className="cancel-button" onClick={onClose}>
-            取消
+            {t('resizeDialog.cancel')}
           </button>
           <button className="confirm-button" onClick={handleConfirm}>
-            确定
+            {t('resizeDialog.confirm')}
           </button>
         </div>
       </div>

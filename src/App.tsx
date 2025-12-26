@@ -9,6 +9,7 @@ import CropArea from "./components/CropArea";
 import DragDropDetector from "./components/DragDropDetector";
 import ImageDisplay from "./components/ImageDisplay";
 import "./components/ImageDisplay.css";
+import { useI18n } from "./contexts/I18nContext";
 
 // 类型定义
 interface ImageInfo {
@@ -27,6 +28,7 @@ interface CropArea {
 }
 
 function App() {
+  const { t } = useI18n();
   const [selectedImage, setSelectedImage] = useState<ImageInfo | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -139,7 +141,7 @@ function App() {
         filters: [
           { name: "Images", extensions: ["jpg", "jpeg", "png", "gif", "bmp"] }
         ],
-        title: "选择图片"
+        title: t('app.selectImage')
       });
       
       if (selected && typeof selected === "string") {
@@ -345,7 +347,7 @@ function App() {
           { name: "ICO", extensions: ["ico"] },
           { name: "All Images", extensions: ["jpg", "jpeg", "png", "gif", "bmp", "ico"] }
         ],
-        title: "另存为",
+        title: t('app.saveAs'),
         defaultPath: defaultName
       });
       
@@ -404,13 +406,13 @@ function App() {
           {isCropping && (
             <>
               <button className="apply-btn" onClick={handleApplyCrop} disabled={loading}>
-                应用裁剪
+                {t('app.applyCrop')}
               </button>
               <button className="cancel-btn" onClick={() => {
                 setIsCropping(false);
                 setCropArea(null);
               }} disabled={loading}>
-                取消
+                {t('app.cancel')}
               </button>
             </>
           )}
@@ -422,13 +424,13 @@ function App() {
           <div className="welcome-screen">
             <div className="welcome-container">
               <div className="welcome-icon">🌸</div>
-              <h1 className="welcome-title">Hello</h1>
+              <h1 className="welcome-title">{t('app.hello')}</h1>
               <div className="welcome-loader"></div>
             </div>
           </div>
         ) : !selectedImage ? (
           <div className="welcome-content">
-            <h2>欢迎使用</h2>
+            <h2>{t('app.welcome')}</h2>
             <DragDropDetector 
                   onImageDrop={handleDropFromDetector} 
                   onDragStateChange={setIsDraggingOver} 
@@ -457,7 +459,7 @@ function App() {
                 onDrop={handleDrop}
               >
                 {loading ? (
-                  <div className="loading">处理中...</div>
+                  <div className="loading">{t('app.loading')}</div>
                 ) : (
                   <ImageDisplay
                     ref={imageRef}
