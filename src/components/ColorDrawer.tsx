@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './ColorDrawer.css';
 
 interface ColorItem {
@@ -14,19 +14,20 @@ interface ColorDrawerProps {
 }
 
 const ColorDrawer: React.FC<ColorDrawerProps> = ({ isOpen, onClose, colors, loading }) => {
+  const [copiedColor, setCopiedColor] = useState<string | null>(null);
+  
   // 复制颜色值到剪贴板
   const copyColor = (hex: string) => {
+    console.log("copyColor")
     navigator.clipboard.writeText(hex)
       .then(() => {
-        // 可以添加一个短暂的提示
-        const colorBlock = document.querySelector(`[data-color="${hex}"]`);
-        if (colorBlock) {
-          const originalText = colorBlock.textContent;
-          colorBlock.textContent = '已复制!';
-          setTimeout(() => {
-            colorBlock.textContent = originalText;
-          }, 1000);
-        }
+        // 显示复制成功提示
+        console.log("setCopiedColor1")
+        setCopiedColor(hex);
+        setTimeout(() => {
+          console.log("setCopiedColor2")
+          setCopiedColor(null);
+        }, 1000);
       })
       .catch(err => {
         console.error('复制失败:', err);
@@ -56,11 +57,11 @@ const ColorDrawer: React.FC<ColorDrawerProps> = ({ isOpen, onClose, colors, load
                   <div 
                     className="color-block"
                     style={{ backgroundColor: color.hex }}
+                    onClick={() => copyColor(color.hex)}
                   ></div>
                   <div className="color-info">
                     <span 
                       className="color-hex"
-                      data-color={color.hex}
                       onClick={() => copyColor(color.hex)}
                     >
                       {color.hex}
@@ -69,6 +70,9 @@ const ColorDrawer: React.FC<ColorDrawerProps> = ({ isOpen, onClose, colors, load
                       {color.percentage.toFixed(1)}%
                     </span>
                   </div>
+                  {copiedColor === color.hex && (
+                    <div className="color-copied-tip">已复制!</div>
+                  )}
                 </li>
               ))}
             </ul>

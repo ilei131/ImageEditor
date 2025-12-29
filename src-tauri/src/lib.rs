@@ -317,6 +317,58 @@ fn rotate_image(path: &str) -> Result<bool, String> {
     Ok(true)
 }
 
+// 辅助函数：将十六进制颜色字符串转换为RGB值
+fn hex_to_rgb(hex: &str) -> Option<(u8, u8, u8)> {
+    let hex = hex.trim_start_matches('#');
+    if hex.len() != 6 {
+        return None;
+    }
+    
+    let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
+    let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
+    let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
+    
+    Some((r, g, b))
+}
+
+// 辅助函数：计算两种颜色的欧氏距离（颜色相似度）
+fn color_distance(color1: (u8, u8, u8), color2: (u8, u8, u8)) -> f32 {
+    let r_diff = (color1.0 as i32 - color2.0 as i32).pow(2);
+    let g_diff = (color1.1 as i32 - color2.1 as i32).pow(2);
+    let b_diff = (color1.2 as i32 - color2.2 as i32).pow(2);
+    
+    (r_diff + g_diff + b_diff) as f32
+}
+
+// 辅助函数：合并相似的颜色
+fn merge_similar_colors(mut colors: Vec<(String, u32)>, threshold: f32) -> Vec<(String, u32)> {
+    let mut merged: Vec<(String, u32)> = Vec::new();
+    
+    while let Some((hex, count)) = colors.pop() {
+        if let Some(rgb1) = hex_to_rgb(&hex) {
+            let mut found = false;
+            
+            // 查找相似的颜色
+            for (merged_hex, merged_count) in &mut merged {
+                if let Some(rgb2) = hex_to_rgb(merged_hex) {
+                    if color_distance(rgb1, rgb2) < threshold {
+                        // 合并相似颜色
+                        *merged_count += count;
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            
+            if !found {
+                merged.push((hex, count));
+            }
+        }
+    }
+    
+    merged
+}
+
 // 提取图片颜色
 #[tauri::command]
 fn extract_colors(path: &str) -> Result<Vec<ColorItem>, String> {
@@ -326,8 +378,8 @@ fn extract_colors(path: &str) -> Result<Vec<ColorItem>, String> {
         .decode()
         .map_err(|e| format!("Failed to decode image: {}", e))?;
     
-    // 缩小图片尺寸以提高性能
-    let resized = img.resize(100, 100, image::imageops::FilterType::Triangle);
+    // 缩小图片尺寸以提高性能，但增加到150x150以捕捉更多颜色
+    let resized = img.resize(150, 150, image::imageops::FilterType::Triangle);
     let (width, height) = resized.dimensions();
     let total_pixels = width * height;
     
@@ -350,8 +402,18 @@ fn extract_colors(path: &str) -> Result<Vec<ColorItem>, String> {
         }
     }
     
+    // 合并相似的颜色（阈值1000，值越大合并越多）
+    let color_vec: Vec<(String, u32)> = color_counts.into_iter().collect();
+    let merged_colors = merge_similar_colors(color_vec, 1000.0);
+    
+    // 将合并后的颜色转换回HashMap
+    let mut merged_color_counts: HashMap<String, u32> = HashMap::new();
+    for (hex, count) in merged_colors {
+        merged_color_counts.insert(hex, count);
+    }
+    
     // 计算每种颜色的占比
-    let mut colors: Vec<ColorItem> = color_counts
+    let mut colors: Vec<ColorItem> = merged_color_counts
         .into_iter()
         .map(|(hex, count)| ColorItem {
             hex,
@@ -362,8 +424,8 @@ fn extract_colors(path: &str) -> Result<Vec<ColorItem>, String> {
     // 按照占比降序排序
     colors.sort_by(|a, b| b.percentage.partial_cmp(&a.percentage).unwrap_or(std::cmp::Ordering::Equal));
     
-    // 只返回前20种主要颜色
-    colors.truncate(20);
+    // 增加返回的颜色数量，确保小占比颜色也能显示
+    colors.truncate(30);
     
     Ok(colors)
 }
