@@ -67,6 +67,7 @@
   transition: background 0.2s ease;
   display: flex;
   align-items: center;
+  min-height: 24px;
 }
 
 .submenu-item:hover,
@@ -74,14 +75,33 @@
   background: linear-gradient(to right, #2196f3, #1976d2);
 }
 
+.submenu-icon {
+  margin-right: 8px;
+  font-size: 16px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #333;
+  line-height: 1;
+}
+
 .submenu-label {
   color: #333;
   font-size: 14px;
   flex-grow: 1;
+  line-height: 1;
+  vertical-align: middle;
 }
 
 .submenu-item:hover .submenu-label,
 .submenu-item.hovered .submenu-label {
+  color: white;
+}
+
+.submenu-item:hover .submenu-icon,
+.submenu-item.hovered .submenu-icon {
   color: white;
 }
 

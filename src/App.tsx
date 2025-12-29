@@ -421,6 +421,40 @@ function App() {
     }
   };
 
+  // 旋转图片
+  const handleRotateImage = async () => {
+    if (!selectedImage || !selectedImage.path) {
+      console.error("No image path available for rotating");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // 调用后端旋转图片
+      await invoke<boolean>("rotate_image", {
+        path: selectedImage.path
+      });
+      // 更新图片信息
+      const updatedImageInfo = await invoke<ImageInfo>("get_image_info", {
+        path: selectedImage.path
+      });
+      // 更新预览URL
+      const buffer = await readFile(selectedImage.path);
+      const blob = new Blob([buffer], { type: getImageMimeType(selectedImage.path) });
+      setPreviewUrl(URL.createObjectURL(blob));
+      setSelectedImage(updatedImageInfo);
+      setLoading(false);
+    } catch (error) {
+      console.error("Failed to rotate image:", error);
+      // 显示错误提示对话框
+      await message(error instanceof Error ? error.message : String(error), {
+        title: t('app.error.title'),
+        kind: "error"
+      });
+      setLoading(false);
+    }
+  };
+
   // 处理工具选择
   const handleToolSelect = (toolId: string) => {
     switch (toolId) {
@@ -449,6 +483,14 @@ function App() {
           handleGenerateICNS();
         } else {
           console.error("No image path available for generating ICNS");
+        }
+        break;
+      case 'rotate':
+        // 旋转图片功能
+        if (selectedImage && selectedImage.path) {
+          handleRotateImage();
+        } else {
+          console.error("No image path available for rotating");
         }
         break;
       // 其他工具可以在这里添加

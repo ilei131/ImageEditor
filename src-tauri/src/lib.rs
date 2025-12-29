@@ -291,6 +291,25 @@ fn generate_icns(path: &str, output: &str) -> Result<bool, String> {
     Ok(true)
 }
 
+// 旋转图片（顺时针90度）
+#[tauri::command]
+fn rotate_image(path: &str) -> Result<bool, String> {
+    // 打开图片
+    let img = ImageReader::open(path)
+        .map_err(|e| format!("Failed to open image: {}", e))?
+        .decode()
+        .map_err(|e| format!("Failed to decode image: {}", e))?;
+    
+    // 顺时针旋转90度
+    let rotated = img.rotate90();
+    
+    // 保存图片
+    rotated.save(path)
+        .map_err(|e| format!("Failed to save image: {}", e))?;
+    
+    Ok(true)
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DiskInfo {
     pub drive: String,
@@ -345,7 +364,8 @@ pub fn run() {
             get_image_info,
             crop_image,
             save_as,
-            generate_icns
+            generate_icns,
+            rotate_image
         ])
         .run(context)
         .expect("error while running tauri application");

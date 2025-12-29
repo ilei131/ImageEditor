@@ -44,18 +44,18 @@ const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, disabled = false }) => 
       id: 'file',
       label: t('toolbar.file'),
       children: [
-        { id: 'open', label: t('toolbar.file.open') },
-        { id: 'save-as', label: t('toolbar.file.save-as') },
+        { id: 'open', label: t('toolbar.file.open'), icon: '📂' },
+        { id: 'save-as', label: t('toolbar.file.save-as'), icon: '💾' },
       ]
     },
     {
       id: 'edit',
       label: t('toolbar.edit'),
       children: [
-        { id: 'resize', label: t('toolbar.edit.resize') },
-        { id: 'toggle-crop', label: t('toolbar.edit.toggle-crop') },
-        { id: 'generate-icns', label: t('toolbar.edit.generate-icns') },
-        // { id: 'rotate', label: t('toolbar.edit.rotate') },
+        { id: 'resize', label: t('toolbar.edit.resize'), icon: '📏' },
+        { id: 'toggle-crop', label: t('toolbar.edit.toggle-crop'), icon: '✂️' },
+        { id: 'rotate', label: t('toolbar.edit.rotate'), icon: '↻' },
+        { id: 'generate-icns', label: t('toolbar.edit.generate-icns'), icon: '🖼️' },
         // { id: 'flip', label: t('toolbar.edit.flip') },
       ]
     },
@@ -63,8 +63,8 @@ const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, disabled = false }) => 
       id: 'language',
       label: language === 'zh-CN' ? '中文' : 'English',
       children: [
-        { id: 'zh-CN', label: '中文' },
-        { id: 'en-US', label: 'English' },
+        { id: 'zh-CN', label: '中文', icon: '🇨🇳' },
+        { id: 'en-US', label: 'English', icon: '🇺🇸' },
       ]
     }
   ];
@@ -137,6 +137,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, disabled = false }) => 
                       handleItemClick(child);
                     }}
                   >
+                    {child.icon && <span className="submenu-icon">{child.icon}</span>}
                     <span className="submenu-label">{child.label}</span>
                   </li>
                 ))}
