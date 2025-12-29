@@ -7,6 +7,7 @@
   "toolbar.edit.toggle-crop": "裁剪图片",
   "toolbar.edit.rotate": "旋转图片",
   "toolbar.edit.generate-icns": "生成icns",
+  "toolbar.edit.extract-colors": "提取颜色",
   "resizeDialog.title": "调整图片分辨率",
   "resizeDialog.width": "宽度:",
   "resizeDialog.height": "高度:",

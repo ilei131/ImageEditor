@@ -7,6 +7,7 @@
   "toolbar.edit.toggle-crop": "Crop Image",
   "toolbar.edit.rotate": "Rotate Image",
   "toolbar.edit.generate-icns": "Generate ICNS",
+  "toolbar.edit.extract-colors": "Extract Colors",
   "resizeDialog.title": "Adjust Image Resolution",
   "resizeDialog.width": "Width:",
   "resizeDialog.height": "Height:",

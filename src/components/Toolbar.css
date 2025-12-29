@@ -31,6 +31,16 @@
   align-items: center;
 }
 
+.toolbar-button-icon {
+  margin-right: 8px;
+  font-size: 16px;
+  width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #333;
+}
+
 .toolbar-button:hover {
   background: rgba(0, 0, 0, 0.1);
   color: #212121;

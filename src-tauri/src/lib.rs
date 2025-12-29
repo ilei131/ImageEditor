@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 // 导入图片处理库
 use image::io::Reader as ImageReader;
-use image::{ GenericImageView };
+use image::{ GenericImageView, Pixel };
 // 导入ICNS处理库
 use icns::{ IconFamily, PixelFormat }; // 更新导入，移除未使用的Image类型
 
@@ -21,6 +21,13 @@ pub struct ImageInfo {
     pub width: u32,
     pub height: u32,
     pub size: u64,
+}
+
+// 定义颜色项结构体
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ColorItem {
+    pub hex: String,
+    pub percentage: f32,
 }
 
 #[tauri::command]
@@ -310,6 +317,57 @@ fn rotate_image(path: &str) -> Result<bool, String> {
     Ok(true)
 }
 
+// 提取图片颜色
+#[tauri::command]
+fn extract_colors(path: &str) -> Result<Vec<ColorItem>, String> {
+    // 打开图片
+    let img = ImageReader::open(path)
+        .map_err(|e| format!("Failed to open image: {}", e))?
+        .decode()
+        .map_err(|e| format!("Failed to decode image: {}", e))?;
+    
+    // 缩小图片尺寸以提高性能
+    let resized = img.resize(100, 100, image::imageops::FilterType::Triangle);
+    let (width, height) = resized.dimensions();
+    let total_pixels = width * height;
+    
+    // 统计颜色出现次数
+    let mut color_counts = HashMap::new();
+    
+    for y in 0..height {
+        for x in 0..width {
+            let pixel = resized.get_pixel(x, y);
+            let channels = pixel.channels();
+            let r = channels[0];
+            let g = channels[1];
+            let b = channels[2];
+            
+            // 将颜色转换为十六进制格式
+            let hex = format!("#{:02X}{:02X}{:02X}", r, g, b);
+            
+            // 更新颜色计数
+            *color_counts.entry(hex).or_insert(0) += 1;
+        }
+    }
+    
+    // 计算每种颜色的占比
+    let mut colors: Vec<ColorItem> = color_counts
+        .into_iter()
+        .map(|(hex, count)| ColorItem {
+            hex,
+            percentage: (count as f32 / total_pixels as f32) * 100.0,
+        })
+        .collect();
+    
+    // 按照占比降序排序
+    colors.sort_by(|a, b| b.percentage.partial_cmp(&a.percentage).unwrap_or(std::cmp::Ordering::Equal));
+    
+    // 只返回前20种主要颜色
+    colors.truncate(20);
+    
+    Ok(colors)
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DiskInfo {
     pub drive: String,
@@ -365,7 +423,8 @@ pub fn run() {
             crop_image,
             save_as,
             generate_icns,
-            rotate_image
+            rotate_image,
+            extract_colors
         ])
         .run(context)
         .expect("error while running tauri application");

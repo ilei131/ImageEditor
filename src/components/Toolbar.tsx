@@ -66,6 +66,11 @@ const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, disabled = false }) => 
         { id: 'zh-CN', label: '中文', icon: '🇨🇳' },
         { id: 'en-US', label: 'English', icon: '🇺🇸' },
       ]
+    },
+    {
+      id: 'extract-colors',
+      label: t('toolbar.edit.extract-colors'),
+      icon: '🎨'
     }
   ];
 
@@ -123,6 +128,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, disabled = false }) => 
               onClick={() => handleItemClick(item)}
               disabled={disabled}
             >
+              {item.icon && <span className="toolbar-button-icon">{item.icon}</span>}
               {item.label}
             </button>
             

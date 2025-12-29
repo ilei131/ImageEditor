@@ -8,6 +8,7 @@ import ResizeDialog from "./components/ResizeDialog";
 import CropArea from "./components/CropArea";
 import DragDropDetector from "./components/DragDropDetector";
 import ImageDisplay from "./components/ImageDisplay";
+import ColorDrawer from "./components/ColorDrawer";
 import "./components/ImageDisplay.css";
 import { useI18n } from "./contexts/I18nContext";
 
@@ -27,6 +28,11 @@ interface CropArea {
   height: number;
 }
 
+interface ColorItem {
+  hex: string;
+  percentage: number;
+}
+
 function App() {
   const { t } = useI18n();
   const [selectedImage, setSelectedImage] = useState<ImageInfo | null>(null);
@@ -42,6 +48,11 @@ function App() {
   const [isBooting] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  
+  // 颜色提取相关状态
+  const [isColorDrawerOpen, setIsColorDrawerOpen] = useState(false);
+  const [colors, setColors] = useState<ColorItem[]>([]);
+  const [isExtractingColors, setIsExtractingColors] = useState(false);
   
   // 移除全局拖拽事件监听，避免与DragDropDetector组件的事件冲突
   // 全局拖拽事件可能会阻止组件内部事件的正确触发
@@ -455,6 +466,36 @@ function App() {
     }
   };
 
+  // 提取图片颜色
+  const handleExtractColors = async () => {
+    if (!selectedImage || !selectedImage.path) {
+      console.error("No image path available for extracting colors");
+      return;
+    }
+
+    try {
+      setIsExtractingColors(true);
+      setIsColorDrawerOpen(true);
+      
+      // 调用后端颜色提取命令
+      const extractedColors = await invoke<ColorItem[]>("extract_colors", {
+        path: selectedImage.path
+      });
+      
+      // 更新颜色列表
+      setColors(extractedColors);
+    } catch (error) {
+      console.error("Failed to extract colors:", error);
+      // 显示错误提示对话框
+      await message(error instanceof Error ? error.message : String(error), {
+        title: t('app.error.title'),
+        kind: "error"
+      });
+    } finally {
+      setIsExtractingColors(false);
+    }
+  };
+
   // 处理工具选择
   const handleToolSelect = (toolId: string) => {
     switch (toolId) {
@@ -491,6 +532,14 @@ function App() {
           handleRotateImage();
         } else {
           console.error("No image path available for rotating");
+        }
+        break;
+      case 'extract-colors':
+        // 提取颜色功能
+        if (selectedImage && selectedImage.path) {
+          handleExtractColors();
+        } else {
+          console.error("No image path available for extracting colors");
         }
         break;
       // 其他工具可以在这里添加
@@ -580,6 +629,14 @@ function App() {
           </div>
         )}
       </main>
+      
+      {/* 颜色提取抽屉组件 */}
+      <ColorDrawer
+        isOpen={isColorDrawerOpen}
+        onClose={() => setIsColorDrawerOpen(false)}
+        colors={colors}
+        loading={isExtractingColors}
+      />
     </div>
   );
 }
