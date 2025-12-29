@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 // 导入图片处理库
 use image::io::Reader as ImageReader;
 use image::{ GenericImageView };
+// 导入ICNS处理库
+use icns::{ IconFamily, PixelFormat }; // 更新导入，移除未使用的Image类型
 
 // 定义图片信息结构体
 #[derive(Serialize, Deserialize, Debug)]
@@ -238,6 +240,57 @@ fn save_as(path: &str, output: &str) -> Result<bool, String> {
     Ok(true)
 }
 
+// 生成ICNS格式图片集
+#[tauri::command]
+fn generate_icns(path: &str, output: &str) -> Result<bool, String> {
+    // 打开图片
+    let img = ImageReader::open(path)
+        .map_err(|e| format!("Failed to open image: {}", e))?
+        .decode()
+        .map_err(|e| format!("Failed to decode image: {}", e))?;
+    
+    // 获取图片原始尺寸
+    let (width, height) = img.dimensions();
+    // 校验图片尺寸是否满足最小要求（1024x1024）
+    if width < 1024 || height < 1024 {
+        return Err(format!("Image size too small. Required at least 1024x1024, but got {}x{}", width, height));
+    }
+    
+    // 创建ICNS图标家族
+    let mut family = IconFamily::new();
+    
+    // 需要生成的图标尺寸
+    let sizes = [16, 32, 64, 128, 256, 512, 1024];
+    
+    // 为每个尺寸生成图标并添加到家族中
+    for size in sizes {
+        // 调整图片尺寸
+        let resized = img.resize(size, size, image::imageops::FilterType::Triangle);
+        
+        // 将图片转换为RGBA格式（ICNS需要）
+        let rgba = resized.to_rgba8();
+        let pixels = rgba.into_raw();
+        
+        // 创建icns::Image对象（使用icns库的from_data函数）
+        let icns_image = icns::Image::from_data(PixelFormat::RGBA, size, size, pixels)
+            .map_err(|e| format!("Failed to create ICNS image for size {}x{}: {:?}", size, size, e))?;
+        
+        // 将图片添加到ICNS家族
+        family.add_icon(&icns_image)
+            .map_err(|e| format!("Failed to add icon of size {}x{}: {:?}", size, size, e))?;
+    }
+    
+    // 创建输出文件
+    let mut file = std::fs::File::create(output)
+        .map_err(|e| format!("Failed to create output file: {}", e))?;
+    
+    // 将ICNS家族写入文件
+    family.write(&mut file)
+        .map_err(|e| format!("Failed to write ICNS file: {}", e))?;
+    
+    Ok(true)
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DiskInfo {
     pub drive: String,
@@ -291,7 +344,8 @@ pub fn run() {
             resize_image_from_data,
             get_image_info,
             crop_image,
-            save_as
+            save_as,
+            generate_icns
         ])
         .run(context)
         .expect("error while running tauri application");

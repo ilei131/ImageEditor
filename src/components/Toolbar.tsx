@@ -54,6 +54,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, disabled = false }) => 
       children: [
         { id: 'resize', label: t('toolbar.edit.resize') },
         { id: 'toggle-crop', label: t('toolbar.edit.toggle-crop') },
+        { id: 'generate-icns', label: t('toolbar.edit.generate-icns') },
         // { id: 'rotate', label: t('toolbar.edit.rotate') },
         // { id: 'flip', label: t('toolbar.edit.flip') },
       ]

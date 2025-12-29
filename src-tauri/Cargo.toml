@@ -33,4 +33,6 @@ lazy_static = "1.4"
 parking_lot = "0.12"
 rand = "0.8"
 image = { version = "0.24", features = ["ico"] }
+tempfile = "3.10"
+icns = "0.3.1"
 

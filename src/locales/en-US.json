@@ -5,6 +5,7 @@
   "toolbar.edit": "Edit",
   "toolbar.edit.resize": "Resize Image",
   "toolbar.edit.toggle-crop": "Crop Image",
+  "toolbar.edit.generate-icns": "Generate ICNS",
   "resizeDialog.title": "Adjust Image Resolution",
   "resizeDialog.width": "Width:",
   "resizeDialog.height": "Height:",
@@ -21,5 +22,11 @@
   "app.selectImage": "Select Image",
   "app.saveAs": "Save As",
   "app.loading": "Processing...",
-  "app.hello": "Hello"
+  "app.hello": "Hello",
+  "app.generateICNS": "Generate ICNS",
+  "icns.error.title": "Resolution Error",
+  "icns.error.sizeTooSmall": "Image size is too small. Current size: ",
+  "icns.error.requiredSize": "Minimum size required for ICNS generation:",
+  "icns.success.title": "Generation Success",
+  "icns.success.message": "ICNS file has been successfully generated!"
 }

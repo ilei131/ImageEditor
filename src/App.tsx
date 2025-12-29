@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
-import { open, save } from "@tauri-apps/plugin-dialog";
+import { open, save, message } from "@tauri-apps/plugin-dialog";
 import { readFile } from "@tauri-apps/plugin-fs";
 import "./App.css";
 import Toolbar from "./components/Toolbar";
@@ -367,6 +367,60 @@ function App() {
     }
   };
 
+  // 生成icns
+  const handleGenerateICNS = async () => {
+    if (!selectedImage || !selectedImage.path) return;
+    
+    try {
+      // 在打开保存窗口前检查图片分辨率
+      if (selectedImage.width < 1024 || selectedImage.height < 1024) {
+        // 显示分辨率不足的错误提示
+        await message(
+          `${t('icns.error.sizeTooSmall')} ${selectedImage.width}x${selectedImage.height}. ${t('icns.error.requiredSize')} 1024x1024.`,
+          {
+            title: t('icns.error.title'),
+            kind: "error"
+          }
+        );
+        return;
+      }
+      
+      const defaultName = selectedImage.name.replace(/\.[^/.]+$/, ".icns");
+      const savedPath = await save({
+        filters: [
+          { name: "ICNS", extensions: ["icns"] },
+          { name: "All Files", extensions: ["*"] }
+        ],
+        title: t('app.generateICNS'),
+        defaultPath: defaultName
+      });
+      
+      if (savedPath) {
+        console.log("savedPath:" + savedPath);
+        setLoading(true);
+        // 使用后端生成icns文件
+        await invoke<boolean>("generate_icns", {
+          path: selectedImage.path,
+          output: savedPath
+        });
+        setLoading(false);
+        // 显示成功提示
+        await message(t('icns.success.message'), {
+          title: t('icns.success.title'),
+          kind: "info"
+        });
+      }
+    } catch (error) {
+      console.error("Failed to generate ICNS:", error);
+      // 显示错误提示对话框
+      await message(error instanceof Error ? error.message : String(error), {
+        title: t('icns.error.title'),
+        kind: "error"
+      });
+      setLoading(false);
+    }
+  };
+
   // 处理工具选择
   const handleToolSelect = (toolId: string) => {
     switch (toolId) {
@@ -387,6 +441,14 @@ function App() {
         // 开启裁剪模式
         if (selectedImage) {
           setIsCropping(true);
+        }
+        break;
+      case 'generate-icns':
+        // 生成icns功能
+        if (selectedImage && selectedImage.path) {
+          handleGenerateICNS();
+        } else {
+          console.error("No image path available for generating ICNS");
         }
         break;
       // 其他工具可以在这里添加

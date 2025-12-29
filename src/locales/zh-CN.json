@@ -5,6 +5,7 @@
   "toolbar.edit": "编辑",
   "toolbar.edit.resize": "修改分辨率",
   "toolbar.edit.toggle-crop": "裁剪图片",
+  "toolbar.edit.generate-icns": "生成icns",
   "resizeDialog.title": "调整图片分辨率",
   "resizeDialog.width": "宽度:",
   "resizeDialog.height": "高度:",
@@ -21,5 +22,11 @@
   "app.selectImage": "选择图片",
   "app.saveAs": "另存为",
   "app.loading": "处理中...",
-  "app.hello": "Hello"
+  "app.hello": "Hello",
+  "app.generateICNS": "生成ICNS",
+  "icns.error.title": "分辨率错误",
+  "icns.error.sizeTooSmall": "图片尺寸太小，当前尺寸为",
+  "icns.error.requiredSize": "生成ICNS需要的最小尺寸为",
+  "icns.success.title": "生成成功",
+  "icns.success.message": "ICNS文件已成功生成！"
 }
