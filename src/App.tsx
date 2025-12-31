@@ -521,7 +521,6 @@ function App() {
 
   // 颜色拾取相关状态
   const [isColorPicking, setIsColorPicking] = useState(false);
-  const [pickedColor, setPickedColor] = useState("#000000");
 
   // 统一的资源清理函数
   const cleanupColorPickerResources = () => {
@@ -603,7 +602,6 @@ function App() {
         // 先获取初始鼠标位置和颜色
         const result = await invoke<{ x: number; y: number; color: string }>("get_mouse_position_and_color");
         console.log("获取鼠标位置和颜色成功:", result);
-        setPickedColor(result.color);
         
         // 检查是否已有同名窗口存在，如果有则先关闭
         try {
@@ -671,9 +669,6 @@ function App() {
     const updateColorPicker = async () => {
       try {
         const result = await invoke<{ x: number; y: number; color: string }>("get_mouse_position_and_color");
-        console.log("result:", result.color);
-        console.log("setPickedColor:", result.color);
-        setPickedColor(result.color);
         if (pickedColorRef.current === result.color) {
           if (!colorPickerWindowRef.current) {
             cleanupColorPickerResources();
