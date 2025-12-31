@@ -59,14 +59,6 @@ const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, disabled = false }) => 
         // { id: 'flip', label: t('toolbar.edit.flip') },
       ]
     },
-    {
-      id: 'language',
-      label: language === 'zh-CN' ? '中文' : 'English',
-      children: [
-        { id: 'zh-CN', label: '中文', icon: '🇨🇳' },
-        { id: 'en-US', label: 'English', icon: '🇺🇸' },
-      ]
-    },
     { id: 'extract-colors',
       label: t('toolbar.edit.extract-colors'),
       icon: '🎨'
@@ -74,6 +66,14 @@ const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, disabled = false }) => 
     { id: 'pick-color',
       label: t('toolbar.edit.pick-color'),
       icon: '👁️'
+    },
+    {
+      id: 'language',
+      label: language === 'zh-CN' ? '中文' : 'English',
+      children: [
+        { id: 'zh-CN', label: '中文', icon: '🇨🇳' },
+        { id: 'en-US', label: 'English', icon: '🇺🇸' },
+      ]
     }
   ];
 
