@@ -2,6 +2,9 @@ import { useState, useRef, useEffect } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open, save, message } from "@tauri-apps/plugin-dialog";
 import { readFile } from "@tauri-apps/plugin-fs";
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { PhysicalPosition } from "@tauri-apps/api/window";
+import { listen, emit } from "@tauri-apps/api/event";
 import "./App.css";
 import Toolbar from "./components/Toolbar";
 import ResizeDialog from "./components/ResizeDialog";
@@ -48,6 +51,9 @@ function App() {
   const [isBooting] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const colorPickerWindowRef = useRef<WebviewWindow | null>(null);
+  const intervalIdRef = useRef<number | null>(null);
+  const pickedColorRef = useRef("#000000");
   
   // 颜色提取相关状态
   const [isColorDrawerOpen, setIsColorDrawerOpen] = useState(false);
@@ -61,6 +67,23 @@ function App() {
     return () => {
       // 确保没有残留的全局事件监听
     };
+  }, []);
+
+  // 组件挂载时清理任何残留的颜色拾取窗口
+  useEffect(() => {
+    const cleanupExistingWindow = async () => {
+      try {
+        const existingWindow = await WebviewWindow.getByLabel("color-picker");
+        if (existingWindow) {
+          console.log("发现残留的颜色拾取窗口，正在关闭...");
+          await existingWindow.close();
+        }
+      } catch (error) {
+        // 忽略错误，窗口可能不存在
+      }
+    };
+    
+    cleanupExistingWindow().catch(console.error);
   }, []);
 
   // // 启动页面过渡逻辑
@@ -496,8 +519,256 @@ function App() {
     }
   };
 
+  // 颜色拾取相关状态
+  const [isColorPicking, setIsColorPicking] = useState(false);
+  const [pickedColor, setPickedColor] = useState("#000000");
+
+  // 统一的资源清理函数
+  const cleanupColorPickerResources = () => {
+    if (intervalIdRef.current) {
+      clearInterval(intervalIdRef.current);
+      intervalIdRef.current = null;
+    }
+    if (colorPickerWindowRef.current) {
+      try {
+        colorPickerWindowRef.current.close();
+      } catch (error) {
+      }
+      colorPickerWindowRef.current = null;
+    }
+    setIsColorPicking(false);
+  };
+
+  // 处理颜色拾取
+  const handleColorPick = async () => {
+    console.log("尝试开始颜色拾取...");
+    
+    // 如果当前正在拾取，先清理资源
+    if (isColorPicking) {
+      console.log("当前正在颜色拾取中，先清理资源...");
+      cleanupColorPickerResources();
+    }
+    
+    // 确保资源已经清理完毕
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    if (!isColorPicking && !colorPickerWindowRef.current) {
+      console.log("资源清理完毕，开始新的颜色拾取...");
+      setIsColorPicking(true);
+    } else {
+      console.error("资源清理不完整，无法开始新的颜色拾取:", {
+        isColorPicking,
+        hasWindowRef: !!colorPickerWindowRef.current
+      });
+    }
+  };
+
+  // 复制颜色并退出拾取模式
+  const copyColorAndExit = async () => {
+    if (isColorPicking) {
+      console.log("setIsColorPicking:", isColorPicking);
+      setIsColorPicking(false);
+      console.log("setIsColorPicking:", isColorPicking);
+    }
+    const colorToCopy = pickedColorRef.current;
+    if (colorToCopy) {
+      try {
+        await navigator.clipboard.writeText(colorToCopy);
+        console.log("Color copied to clipboard:", colorToCopy);
+      } catch (error) {
+        console.error("Failed to copy color:", error);
+      }
+      
+      // 使用统一的清理函数
+      cleanupColorPickerResources();
+    }
+  };
+
+  // 停止颜色拾取
+  const stopColorPicking = () => {
+    setIsColorPicking(false);
+  };
+
+  // 定期更新鼠标位置和颜色
+  useEffect(() => {
+    if (!isColorPicking) {
+      // 如果不是拾取模式，使用统一清理函数
+      cleanupColorPickerResources();
+      return;
+    }
+    
+    // 创建颜色面板窗口
+    const createColorPickerWindow = async () => {
+      try {
+        // 先获取初始鼠标位置和颜色
+        const result = await invoke<{ x: number; y: number; color: string }>("get_mouse_position_and_color");
+        console.log("获取鼠标位置和颜色成功:", result);
+        setPickedColor(result.color);
+        
+        // 检查是否已有同名窗口存在，如果有则先关闭
+        try {
+          const existingWindow = await WebviewWindow.getByLabel("color-picker");
+          if (existingWindow) {
+            console.log("发现已存在的颜色拾取窗口，正在关闭...");
+            await existingWindow.close();
+          }
+        } catch (error) {
+          // 忽略检查和关闭错误
+          console.log("检查或关闭已有窗口时出错:", error);
+        }
+        
+        // 创建窗口
+        console.log("开始创建颜色拾取窗口...");
+        const win = new WebviewWindow("color-picker", {
+          url: "/color-picker-window.html?color=" + encodeURIComponent(result.color),
+          width: 150,
+          height: 100,
+          x: result.x - 75, // 窗口水平居中于鼠标指针下方
+          y: result.y + 20, // 窗口在鼠标指针正下方显示
+          resizable: false,
+          decorations: false,
+          alwaysOnTop: true,
+          skipTaskbar: true,
+        });
+        
+        console.log("颜色拾取窗口创建成功:", win);
+        colorPickerWindowRef.current = win;
+        
+        // 监听窗口关闭事件
+        win.once("tauri://destroyed", () => {
+          console.log("颜色拾取窗口已关闭");
+          // 使用统一的清理函数
+          cleanupColorPickerResources();
+        });
+        
+        // 监听窗口创建失败事件
+        win.once("tauri://error", (error) => {
+          console.error("颜色拾取窗口创建失败:", error);
+          cleanupColorPickerResources();
+        });
+        
+        // 监听停止颜色拾取事件
+        await listen("stop-color-picking", () => {
+          console.log("收到stop-color-picking事件，停止颜色拾取");
+          stopColorPicking();
+        });
+        
+        // 监听颜色选择事件
+        await listen("color-picked", () => {
+          cleanupColorPickerResources();
+        });
+        
+        return win;
+      } catch (error) {
+        console.error("创建颜色拾取窗口过程中发生错误:", error);
+        // 发生错误时清理资源
+        cleanupColorPickerResources();
+        // 重新抛出错误，让initColorPicker的catch捕获
+        throw error;
+      }
+    };
+    
+    const updateColorPicker = async () => {
+      try {
+        const result = await invoke<{ x: number; y: number; color: string }>("get_mouse_position_and_color");
+        console.log("result:", result.color);
+        console.log("setPickedColor:", result.color);
+        setPickedColor(result.color);
+        if (pickedColorRef.current === result.color) {
+          if (!colorPickerWindowRef.current) {
+            cleanupColorPickerResources();
+            console.log("return1");
+            return;
+          }
+          
+          try {
+            await colorPickerWindowRef.current.setPosition(new PhysicalPosition(result.x - 75, result.y + 20)); // 窗口水平居中于鼠标指针下方
+          } catch (positionError) {
+            console.error("更新窗口位置失败:", positionError);
+          }
+          console.log("return2");
+          return;
+        }
+        
+        pickedColorRef.current = result.color;
+
+        
+        if (!colorPickerWindowRef.current) {
+          cleanupColorPickerResources();
+          return;
+        }
+        
+        try {
+          await colorPickerWindowRef.current.setPosition(new PhysicalPosition(result.x - 75, result.y + 20)); // 窗口水平居中于鼠标指针下方
+        } catch (positionError) {
+          console.error("更新窗口位置失败:", positionError);
+        }
+        
+        try {
+          const colorData = { color: result.color };
+          console.log("颜色变化:", pickedColorRef.current, "->", result.color);
+          await emit("update-color", colorData);
+        } catch (emitError) {
+          console.error("发送颜色更新失败:", emitError);
+        }
+      } catch (error) {
+        console.error("更新鼠标位置和颜色失败:", error);
+        cleanupColorPickerResources();
+      }
+    };
+
+    // 初始化创建窗口并在成功后启动定时器
+    const initColorPicker = async () => {
+      try {
+        const win = await createColorPickerWindow();
+        
+        if (win && colorPickerWindowRef.current === win) {
+          // 使用定时器轮询鼠标位置和颜色
+          intervalIdRef.current = window.setInterval(() => {
+            if (isColorPicking) {
+              updateColorPicker();
+            } else {
+              cleanupColorPickerResources();
+            }
+          }, 100);
+          
+          // 等待颜色窗口初始化完成
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          // 窗口创建后获取一次颜色
+          if (isColorPicking) {
+              updateColorPicker();
+            } 
+        } else {
+          console.error("窗口创建失败或引用不一致，取消初始化");
+          cleanupColorPickerResources();
+        }
+      } catch (error) {
+        console.error("初始化颜色拾取失败:", error);
+        setIsColorPicking(false);
+      }
+    };
+    
+    initColorPicker();
+
+    // 添加点击事件监听，点击时复制颜色并退出拾取模式
+    const handleClick = () => {
+      copyColorAndExit();
+    };
+
+    document.addEventListener("click", handleClick);
+
+    // 清理函数
+    return () => {
+      document.removeEventListener("click", handleClick);
+      
+      // 使用统一的清理函数
+      cleanupColorPickerResources();
+    };
+  }, [isColorPicking]);
+
   // 处理工具选择
-  const handleToolSelect = (toolId: string) => {
+  const handleToolSelect = (toolId: string, event: React.MouseEvent) => {
     switch (toolId) {
       case 'open':
         handleSelectImage();
@@ -542,6 +813,11 @@ function App() {
           console.error("No image path available for extracting colors");
         }
         break;
+      case 'pick-color':
+        // 颜色拾取功能
+        event.stopPropagation(); // 阻止事件冒泡
+        handleColorPick();
+        break;
       // 其他工具可以在这里添加
       default:
         console.log(`Selected tool: ${toolId}`);
@@ -552,91 +828,92 @@ function App() {
 
   return (
     <div className="app">
-      <header className="app-header">
-        {/* 工具栏组件移到这里 */}
-        <Toolbar onToolSelect={handleToolSelect} disabled={loading} />
-        <div className="header-buttons">
-          {isCropping && (
-            <>
-              <button className="apply-btn" onClick={handleApplyCrop} disabled={loading}>
-                {t('app.applyCrop')}
-              </button>
-              <button className="cancel-btn" onClick={() => {
-                setIsCropping(false);
-                setCropArea(null);
-              }} disabled={loading}>
-                {t('app.cancel')}
-              </button>
-            </>
-          )}
-        </div>
-      </header>
+          <header className="app-header">
+            {/* 工具栏组件移到这里 */}
+            <Toolbar onToolSelect={handleToolSelect} disabled={loading} />
+            <div className="header-buttons">
+              {isCropping && (
+                <>
+                  <button className="apply-btn" onClick={handleApplyCrop} disabled={loading}>
+                    {t('app.applyCrop')}
+                  </button>
+                  <button className="cancel-btn" onClick={() => {
+                    setIsCropping(false);
+                    setCropArea(null);
+                  }} disabled={loading}>
+                    {t('app.cancel')}
+                  </button>
+                </>
+              )}
+            </div>
+          </header>
 
-      <main className="app-main">
-        {isBooting ? (
-          <div className="welcome-screen">
-            <div className="welcome-container">
-              <div className="welcome-icon">🌸</div>
-              <h1 className="welcome-title">{t('app.hello')}</h1>
-              <div className="welcome-loader"></div>
-            </div>
-          </div>
-        ) : !selectedImage ? (
-          <div className="welcome-content">
-            <h2>{t('app.welcome')}</h2>
-            <DragDropDetector 
-                  onImageDrop={handleDropFromDetector} 
-                  onDragStateChange={setIsDraggingOver} 
-                />
-          </div>
-        ) : (
-          <div className="image-container">
-            
-            {/* 分辨率调整对话框 */}
-            <ResizeDialog
-              isOpen={showResizeDialog}
-              onClose={() => setShowResizeDialog(false)}
-              onConfirm={handleResizeConfirm}
-              currentWidth={newWidth}
-              currentHeight={newHeight}
-            />
-            
-            {/* 图片预览区域 */}
-            <div className="image-preview-container">
-              <div
-                ref={previewRef}
-                className={`preview-area ${isDraggingOver ? 'drag-over' : ''}`}
-                onDragOver={handleDragOver}
-                onDragEnter={handleDragEnter}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-              >
-                {loading ? (
-                  <div className="loading">{t('app.loading')}</div>
-                ) : (
-                  <ImageDisplay
-                    ref={imageRef}
-                    imageUrl={previewUrl || (selectedImage.path ? convertFileSrc(selectedImage.path) : '')}
-                    altText={selectedImage.name}
-                    isDraggingOver={isDraggingOver}
-                    imageInfo={selectedImage}
-                    isCropping={isCropping}
-                    onCropAreaChange={handleCropAreaChange}
-                  />
-                )}
+          <main className="app-main">
+            {isBooting ? (
+              <div className="welcome-screen">
+                <div className="welcome-container">
+                  <div className="welcome-icon">🌸</div>
+                  <h1 className="welcome-title">{t('app.hello')}</h1>
+                  <div className="welcome-loader"></div>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
-      </main>
-      
-      {/* 颜色提取抽屉组件 */}
-      <ColorDrawer
-        isOpen={isColorDrawerOpen}
-        onClose={() => setIsColorDrawerOpen(false)}
-        colors={colors}
-        loading={isExtractingColors}
-      />
+            ) : !selectedImage ? (
+              <div className="welcome-content">
+                <h2>{t('app.welcome')}</h2>
+                <DragDropDetector 
+                      onImageDrop={handleDropFromDetector} 
+                      onDragStateChange={setIsDraggingOver} 
+                      disabled={isColorPicking} 
+                    />
+              </div>
+            ) : (
+              <div className="image-container">
+                
+                {/* 分辨率调整对话框 */}
+                <ResizeDialog
+                  isOpen={showResizeDialog}
+                  onClose={() => setShowResizeDialog(false)}
+                  onConfirm={handleResizeConfirm}
+                  currentWidth={newWidth}
+                  currentHeight={newHeight}
+                />
+                
+                {/* 图片预览区域 */}
+                <div className="image-preview-container">
+                  <div
+                    ref={previewRef}
+                    className={`preview-area ${isDraggingOver ? 'drag-over' : ''}`}
+                    onDragOver={handleDragOver}
+                    onDragEnter={handleDragEnter}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                  >
+                    {loading ? (
+                      <div className="loading">{t('app.loading')}</div>
+                    ) : (
+                      <ImageDisplay
+                        ref={imageRef}
+                        imageUrl={previewUrl || (selectedImage.path ? convertFileSrc(selectedImage.path) : '')}
+                        altText={selectedImage.name}
+                        isDraggingOver={isDraggingOver}
+                        imageInfo={selectedImage}
+                        isCropping={isCropping}
+                        onCropAreaChange={handleCropAreaChange}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </main>
+          
+          {/* 颜色提取抽屉组件 */}
+          <ColorDrawer
+            isOpen={isColorDrawerOpen}
+            onClose={() => setIsColorDrawerOpen(false)}
+            colors={colors}
+            loading={isExtractingColors}
+          />
     </div>
   );
 }

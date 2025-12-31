@@ -24,7 +24,7 @@ tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-winapi = { version = "0.3", features = ["fileapi", "winnt", "handleapi", "winbase", "winerror"] }
+winapi = { version = "0.3", features = ["fileapi", "winnt", "handleapi", "winbase", "winerror", "winuser", "wingdi"] }
 walkdir = "2"
 rayon = "1.8"
 jwalk = "0.8"
@@ -35,4 +35,5 @@ rand = "0.8"
 image = { version = "0.24", features = ["ico"] }
 tempfile = "3.10"
 icns = "0.3.1"
+base64 = "0.22"
 

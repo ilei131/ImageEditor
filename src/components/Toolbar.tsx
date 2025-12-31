@@ -10,7 +10,7 @@ interface ToolbarItem {
 }
 
 interface ToolbarProps {
-  onToolSelect: (toolId: string) => void;
+  onToolSelect: (toolId: string, event: React.MouseEvent) => void;
   disabled?: boolean;
 }
 
@@ -67,14 +67,17 @@ const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, disabled = false }) => 
         { id: 'en-US', label: 'English', icon: '🇺🇸' },
       ]
     },
-    {
-      id: 'extract-colors',
+    { id: 'extract-colors',
       label: t('toolbar.edit.extract-colors'),
       icon: '🎨'
+    },
+    { id: 'pick-color',
+      label: t('toolbar.edit.pick-color'),
+      icon: '👁️'
     }
   ];
 
-  const handleItemClick = (item: ToolbarItem) => {
+  const handleItemClick = (item: ToolbarItem, event: React.MouseEvent) => {
     if (item.children) {
       // 切换子菜单的展开状态
       if (openMenus.includes(item.id)) {
@@ -90,7 +93,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, disabled = false }) => 
         setLanguage(item.id as 'zh-CN' | 'en-US');
       } else {
         // 执行工具选择回调
-        onToolSelect(item.id);
+        onToolSelect(item.id, event);
       }
       // 关闭所有菜单
       setOpenMenus([]);
@@ -125,7 +128,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, disabled = false }) => 
           >
             <button
               className="toolbar-button"
-              onClick={() => handleItemClick(item)}
+              onClick={(event) => handleItemClick(item, event)}
               disabled={disabled}
             >
               {item.icon && <span className="toolbar-button-icon">{item.icon}</span>}
@@ -140,7 +143,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, disabled = false }) => 
                     className={`submenu-item ${hoveredItem === child.id ? 'hovered' : ''}`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleItemClick(child);
+                      handleItemClick(child, e);
                     }}
                   >
                     {child.icon && <span className="submenu-icon">{child.icon}</span>}

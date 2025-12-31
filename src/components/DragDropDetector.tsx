@@ -11,9 +11,10 @@ interface DragDropEventPayload {
 interface DragDropDetectorProps {
   onImageDrop: (file: File | string) => void;
   onDragStateChange?: (isDragging: boolean) => void;
+  disabled?: boolean;
 }
 
-const DragDropDetector: React.FC<DragDropDetectorProps> = ({ onImageDrop, onDragStateChange }) => {
+const DragDropDetector: React.FC<DragDropDetectorProps> = ({ onImageDrop, onDragStateChange, disabled = false }) => {
   const { t } = useI18n();
   const [isDragging, setIsDragging] = useState(false);
   const detectorRef = useRef<HTMLDivElement>(null);
@@ -27,6 +28,12 @@ const DragDropDetector: React.FC<DragDropDetectorProps> = ({ onImageDrop, onDrag
   // 使用Tauri 2的拖拽事件监听
   useEffect(() => {
     console.log("DragDropDetector: useEffect mounted");
+    
+    // 如果组件被禁用，不设置任何事件监听器
+    if (disabled) {
+      console.log("DragDropDetector: Component is disabled, skipping event listener setup");
+      return;
+    }
     
     // 设置拖拽事件监听器
     const setupDragListeners = async () => {
@@ -126,7 +133,7 @@ const DragDropDetector: React.FC<DragDropDetectorProps> = ({ onImageDrop, onDrag
         element.removeEventListener('click', handleClick);
       }
     };
-  }, [onImageDrop, onDragStateChange]);
+  }, [onImageDrop, onDragStateChange, disabled]);
 
 
   return (

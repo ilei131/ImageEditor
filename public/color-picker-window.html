@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Color Picker</title>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 8px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+        sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background-color: #ffffff;
+      border: 1px solid #cccccc;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      cursor: pointer;
+      user-select: none;
+      overflow: hidden;
+    }
+
+    .color-display {
+      width: 40px;
+      height: 40px;
+      border: 1px solid #cccccc;
+      border-radius: 4px;
+      margin-bottom: 4px;
+    }
+
+    .color-code {
+      font-size: 14px;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: #666666;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="color-display" id="colorDisplay"></div>
+  <div class="color-code" id="colorCode">#000000</div>
+  <div class="hint">点击复制颜色</div>
+
+  <script>
+    console.log('color-picker-window.html脚本开始执行');
+    
+    // 等待Tauri API加载完成
+    function waitForTauriAPI(callback) {
+      if (window.__TAURI__) {
+        callback();
+      } else {
+        setTimeout(() => waitForTauriAPI(callback), 50);
+      }
+    }
+    
+    let currentColor = '#000000';
+    
+    // 更新颜色显示
+    function updateColor(color) {
+      console.log('updateColor函数被调用，颜色:', color);
+      
+      if (typeof color !== 'string') {
+        console.error('颜色值不是字符串:', color);
+        return;
+      }
+      
+      if (!/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color)) {
+        console.error('颜色格式不合法:', color);
+        return;
+      }
+      
+      currentColor = color;
+      
+      const colorDisplay = document.getElementById('colorDisplay');
+      const colorCode = document.getElementById('colorCode');
+      
+      if (colorDisplay) {
+        colorDisplay.style.backgroundColor = color;
+      }
+      
+      if (colorCode) {
+        colorCode.textContent = color;
+      }
+    }
+
+    // 点击时复制颜色并关闭窗口
+    document.body.addEventListener('click', async (event) => {
+      console.log('========== 点击事件触发 ==========');
+      
+      try {
+        console.log('步骤1: 开始读取DOM元素');
+        
+        // 直接从DOM读取当前显示的颜色值
+        const colorCodeElement = document.getElementById('colorCode');
+        const colorDisplayElement = document.getElementById('colorDisplay');
+        
+        console.log('colorCodeElement:', colorCodeElement);
+        console.log('colorDisplayElement:', colorDisplayElement);
+        console.log('colorCodeElement.textContent:', colorCodeElement ? colorCodeElement.textContent : 'N/A');
+        console.log('colorDisplayElement.style.backgroundColor:', colorDisplayElement ? colorDisplayElement.style.backgroundColor : 'N/A');
+        console.log('currentColor变量:', currentColor);
+        
+        let colorToCopy = currentColor;
+        
+        if (colorCodeElement && colorCodeElement.textContent) {
+          colorToCopy = colorCodeElement.textContent;
+          console.log('从colorCodeElement读取到的颜色:', colorToCopy);
+        } else {
+          console.log('无法从DOM读取颜色，使用currentColor:', colorToCopy);
+        }
+        
+        console.log('步骤2: 准备发送停止颜色拾取事件');
+        if (window.__TAURI__ && window.__TAURI__.event) {
+          await window.__TAURI__.event.emit('stop-color-picking');
+          console.log('步骤3: 停止颜色拾取事件已发送');
+        } else {
+          console.error('Tauri API不可用，无法发送停止颜色拾取事件');
+        }
+        
+        // 等待一小段时间，确保定时器已经停止
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        console.log('步骤4: 准备复制到剪贴板，颜色值:', colorToCopy);
+        
+        await navigator.clipboard.writeText(colorToCopy);
+        console.log('步骤5: 已复制到剪贴板:', colorToCopy);
+        
+        console.log('步骤6: 准备关闭窗口');
+        if (window.__TAURI__ && window.__TAURI__.window) {
+          const currentWindow = window.__TAURI__.window.getCurrent();
+          await currentWindow.close();
+          console.log('步骤7: 窗口已关闭');
+        } else {
+          console.error('Tauri API不可用，无法关闭窗口');
+        }
+        
+        console.log('========== 点击事件处理完成 ==========');
+      } catch (error) {
+        console.error('========== 点击事件处理失败 ==========');
+        console.error('错误详情:', error);
+        console.error('错误堆栈:', error.stack);
+      }
+    });
+
+    // 确保页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', async () => {
+      console.log('DOM已加载，开始初始化颜色拾取窗口...');
+      
+      waitForTauriAPI(() => {
+        console.log('Tauri API已加载');
+        
+        try {
+          const unlisten = window.__TAURI__.event.listen('update-color', (event) => {
+            console.log('收到 update-color 事件:', event);
+            
+            if (event && event.payload) {
+              const color = event.payload.color;
+              if (typeof color === 'string') {
+                updateColor(color);
+              }
+            }
+          });
+          
+          console.log('update-color 事件监听器已设置');
+        } catch (error) {
+          console.error('设置事件监听器失败:', error);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

@@ -331,6 +331,53 @@ fn hex_to_rgb(hex: &str) -> Option<(u8, u8, u8)> {
     Some((r, g, b))
 }
 
+// 获取鼠标位置和屏幕颜色
+#[tauri::command]
+fn get_mouse_position_and_color() -> Result<HashMap<String, serde_json::Value>, String> {
+    // 使用Windows API获取鼠标位置
+    unsafe {
+        use winapi::shared::windef::{HWND, POINT};
+        use winapi::um::winuser::{GetCursorPos, GetDC, ReleaseDC};
+        use winapi::um::wingdi::GetPixel;
+        
+        let mut point: POINT = std::mem::zeroed();
+        
+        // 获取鼠标位置
+        if GetCursorPos(&mut point) == 0 {
+            return Err("Failed to get cursor position".to_string());
+        }
+        
+        // 获取屏幕DC (NULL表示整个屏幕)
+        let hdc: HWND = std::ptr::null_mut();
+        let screen_dc = GetDC(std::ptr::null_mut());
+        if screen_dc.is_null() {
+            return Err("Failed to get screen DC".to_string());
+        }
+        
+        // 获取屏幕像素颜色
+        let color = GetPixel(screen_dc, point.x, point.y);
+        
+        // 释放DC
+        ReleaseDC(hdc, screen_dc);
+        
+        // 解析RGB值 (GetPixel返回的COLORREF格式是0x00bbggrr)
+        let b = ((color >> 16) & 0xFF) as u8;
+        let g = ((color >> 8) & 0xFF) as u8;
+        let r = (color & 0xFF) as u8;
+        
+        // 转换为十六进制颜色字符串
+        let hex_color = format!("#{:02X}{:02X}{:02X}", r, g, b);
+        
+        // 构建结果
+        let mut result = HashMap::new();
+        result.insert("x".to_string(), serde_json::Value::Number(point.x.into()));
+        result.insert("y".to_string(), serde_json::Value::Number(point.y.into()));
+        result.insert("color".to_string(), serde_json::Value::String(hex_color.clone()));
+        
+        Ok(result)
+    }
+}
+
 // 辅助函数：计算两种颜色的欧氏距离（颜色相似度）
 fn color_distance(color1: (u8, u8, u8), color2: (u8, u8, u8)) -> f32 {
     let r_diff = (color1.0 as i32 - color2.0 as i32).pow(2);
@@ -476,7 +523,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_dialog::init()) 
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             list_images, 
             resize_image, 
@@ -486,7 +533,8 @@ pub fn run() {
             save_as,
             generate_icns,
             rotate_image,
-            extract_colors
+            extract_colors,
+            get_mouse_position_and_color
         ])
         .run(context)
         .expect("error while running tauri application");
