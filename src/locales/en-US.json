@@ -37,5 +37,8 @@
   "colorPicker.macos.message": "Please use the color picker in the Colors panel to select colors.",
   "colorPicker.macos.error.title": "Unable to get color value from system Colors panel",
   "colorPicker.macos.error.message": "Failed to open system Colors panel: {error}",
-  "colorPicker.macos.error.fallback": "Please manually open \"System Preferences > Other > Color Picker\""
+  "colorPicker.macos.error.fallback": "Please manually open \"System Preferences > Other > Color Picker\"",
+  "colorDrawer.title": "Dominant Colors",
+  "colorDrawer.extracting": "Extracting colors...",
+  "colorDrawer.copied": "Copied!"
 }

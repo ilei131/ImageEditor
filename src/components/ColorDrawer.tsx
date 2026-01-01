@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './ColorDrawer.css';
+import { useI18n } from '../contexts/I18nContext';
 
 interface ColorItem {
   hex: string;
@@ -14,6 +15,7 @@ interface ColorDrawerProps {
 }
 
 const ColorDrawer: React.FC<ColorDrawerProps> = ({ isOpen, onClose, colors, loading }) => {
+  const { t } = useI18n();
   const [copiedColor, setCopiedColor] = useState<string | null>(null);
   
   // 复制颜色值到剪贴板
@@ -39,7 +41,7 @@ const ColorDrawer: React.FC<ColorDrawerProps> = ({ isOpen, onClose, colors, load
       <div className="color-drawer-overlay" onClick={onClose}></div>
       <div className="color-drawer-content">
         <div className="color-drawer-header">
-          <h2>主要颜色</h2>
+          <h2>{t('colorDrawer.title')}</h2>
           <button className="color-drawer-close" onClick={onClose}>
             ✕
           </button>
@@ -48,7 +50,7 @@ const ColorDrawer: React.FC<ColorDrawerProps> = ({ isOpen, onClose, colors, load
         <div className="color-drawer-body">
           {loading ? (
             <div className="color-drawer-loading">
-              <p>提取颜色中...</p>
+              <p>{t('colorDrawer.extracting')}</p>
             </div>
           ) : (
             <ul className="color-list">
@@ -71,7 +73,7 @@ const ColorDrawer: React.FC<ColorDrawerProps> = ({ isOpen, onClose, colors, load
                     </span>
                   </div>
                   {copiedColor === color.hex && (
-                    <div className="color-copied-tip">已复制!</div>
+                    <div className="color-copied-tip">{t('colorDrawer.copied')}</div>
                   )}
                 </li>
               ))}

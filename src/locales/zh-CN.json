@@ -37,5 +37,8 @@
   "colorPicker.macos.message": "请使用Colors面板中的拾色器拾取颜色。",
   "colorPicker.macos.error.title": "无法获取系统Colors面板的颜色值",
   "colorPicker.macos.error.message": "打开系统Colors面板失败: {error}",
-  "colorPicker.macos.error.fallback": "请手动打开\"系统偏好设置 > 其他 > 颜色选择器\""
+  "colorPicker.macos.error.fallback": "请手动打开\"系统偏好设置 > 其他 > 颜色选择器\"",
+  "colorDrawer.title": "主要颜色",
+  "colorDrawer.extracting": "提取颜色中...",
+  "colorDrawer.copied": "已复制!"
 }
