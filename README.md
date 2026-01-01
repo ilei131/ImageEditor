@@ -13,6 +13,7 @@ npm run tauri build
 - Crop the image
 - Resize the image
 - Save the image in different formats (JPEG, PNG, ICO)
+- Generate icns file
 - Extract colors from the image
 - Pick color from the image
 ## Screenshot
