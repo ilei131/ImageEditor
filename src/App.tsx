@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open, save, message } from "@tauri-apps/plugin-dialog";
 import { readFile } from "@tauri-apps/plugin-fs";
@@ -347,7 +347,8 @@ function App() {
         });
         
         // 创建新的预览URL
-        const resizedBlob = new Blob([resizedData], { type: 'image/png' });
+        const uint8Array = new Uint8Array(resizedData);
+        const resizedBlob = new Blob([uint8Array], { type: 'image/png' });
         const newPreviewUrl = URL.createObjectURL(resizedBlob);
         
         // 更新预览和图片信息
@@ -596,9 +597,53 @@ function App() {
       return;
     }
     
+    // macOS 颜色选择对话框
+    const showMacOSColorPicker = async () => {
+      try {
+        console.log("macOS 系统：启动系统Colors面板");
+        
+        // 通过后端启动macOS系统Colors面板
+        const result = await invoke<{ x: number; y: number; color: string; note: string }>("get_mouse_position_and_color");
+        console.log("macOS Colors面板结果:", result);
+        
+        if (result && result.color) {
+          // 显示系统Colors面板已启动的消息，让用户手动选择颜色
+          await message(
+            `${t('colorPicker.macos.title')}\n\n${t('colorPicker.macos.message')}`,
+            { kind: 'info', title: t('app.welcome') }
+          );
+          return true;
+        } else {
+          await message(t('colorPicker.macos.error.title'), { kind: 'error', title: t('app.error.title') });
+          return false;
+        }
+      } catch (error) {
+        console.error("macOS 颜色选择错误:", error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const formattedMessage = t('colorPicker.macos.error.message').replace('{error}', errorMessage);
+        await message(
+          `${formattedMessage}\n\n${t('colorPicker.macos.error.fallback')}`,
+          { kind: 'error', title: t('app.error.title') }
+        );
+        return false;
+      }
+    };
+
     // 创建颜色面板窗口
     const createColorPickerWindow = async () => {
       try {
+        // 检测操作系统类型
+        const isMacOS = navigator.userAgent.toLowerCase().includes('mac');
+        
+        if (isMacOS) {
+          // macOS 系统：显示颜色选择对话框
+          console.log("macOS 系统：启动颜色选择对话框");
+          return await showMacOSColorPicker();
+        }
+        
+        // Windows 系统：创建颜色拾取窗口
+        console.log("Windows 系统：创建颜色拾取窗口");
+        
         // 先获取初始鼠标位置和颜色
         const result = await invoke<{ x: number; y: number; color: string }>("get_mouse_position_and_color");
         console.log("获取鼠标位置和颜色成功:", result);

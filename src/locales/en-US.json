@@ -32,5 +32,10 @@
   "icns.error.sizeTooSmall": "Image size is too small. Current size: ",
   "icns.error.requiredSize": "Minimum size required for ICNS generation:",
   "icns.success.title": "Generation Success",
-  "icns.success.message": "ICNS file has been successfully generated!"
+  "icns.success.message": "ICNS file has been successfully generated!",
+  "colorPicker.macos.title": "System Colors Panel Started!",
+  "colorPicker.macos.message": "Please use the color picker in the Colors panel to select colors.",
+  "colorPicker.macos.error.title": "Unable to get color value from system Colors panel",
+  "colorPicker.macos.error.message": "Failed to open system Colors panel: {error}",
+  "colorPicker.macos.error.fallback": "Please manually open \"System Preferences > Other > Color Picker\""
 }

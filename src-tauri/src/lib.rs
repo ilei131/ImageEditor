@@ -334,48 +334,197 @@ fn hex_to_rgb(hex: &str) -> Option<(u8, u8, u8)> {
 // 获取鼠标位置和屏幕颜色
 #[tauri::command]
 fn get_mouse_position_and_color() -> Result<HashMap<String, serde_json::Value>, String> {
-    // 使用Windows API获取鼠标位置
-    unsafe {
-        use winapi::shared::windef::{HWND, POINT};
-        use winapi::um::winuser::{GetCursorPos, GetDC, ReleaseDC};
-        use winapi::um::wingdi::GetPixel;
-        
-        let mut point: POINT = std::mem::zeroed();
-        
-        // 获取鼠标位置
-        if GetCursorPos(&mut point) == 0 {
-            return Err("Failed to get cursor position".to_string());
+    #[cfg(target_os = "windows")]
+    {
+        // Windows 实现 - 使用Windows API获取鼠标位置和屏幕颜色
+        unsafe {
+            use winapi::shared::windef::{HWND, POINT};
+            use winapi::um::winuser::{GetCursorPos, GetDC, ReleaseDC};
+            use winapi::um::wingdi::GetPixel;
+            
+            let mut point: POINT = std::mem::zeroed();
+            
+            // 获取鼠标位置
+            if GetCursorPos(&mut point) == 0 {
+                return Err("Failed to get cursor position".to_string());
+            }
+            
+            // 获取屏幕DC (NULL表示整个屏幕)
+            let hdc: HWND = std::ptr::null_mut();
+            let screen_dc = GetDC(std::ptr::null_mut());
+            if screen_dc.is_null() {
+                return Err("Failed to get screen DC".to_string());
+            }
+            
+            // 获取屏幕像素颜色
+            let color = GetPixel(screen_dc, point.x, point.y);
+            
+            // 释放DC
+            ReleaseDC(hdc, screen_dc);
+            
+            // 解析RGB值 (GetPixel返回的COLORREF格式是0x00bbggrr)
+            let b = ((color >> 16) & 0xFF) as u8;
+            let g = ((color >> 8) & 0xFF) as u8;
+            let r = (color & 0xFF) as u8;
+            
+            // 转换为十六进制颜色字符串
+            let hex_color = format!("#{:02X}{:02X}{:02X}", r, g, b);
+            
+            // 构建结果
+            let mut result = HashMap::new();
+            result.insert("x".to_string(), serde_json::Value::Number(point.x.into()));
+            result.insert("y".to_string(), serde_json::Value::Number(point.y.into()));
+            result.insert("color".to_string(), serde_json::Value::String(hex_color.clone()));
+            result.insert("note".to_string(), serde_json::Value::String("Windows 鼠标拾色".to_string()));
+            
+            Ok(result)
         }
+    }
+    
+    #[cfg(target_os = "macos")]
+    {
+        // macOS 实现 - 启动系统颜色选择器
+        println!("正在启动 macOS 系统颜色选择器...");
         
-        // 获取屏幕DC (NULL表示整个屏幕)
-        let hdc: HWND = std::ptr::null_mut();
-        let screen_dc = GetDC(std::ptr::null_mut());
-        if screen_dc.is_null() {
-            return Err("Failed to get screen DC".to_string());
+        // 启动 macOS 系统拾色器
+        let color_result = start_macos_color_picker();
+        
+        match color_result {
+            Ok(hex_color) => {
+                // 获取当前鼠标位置
+                let mouse_x = get_mouse_position_macos();
+                let mouse_y = get_mouse_position_macos_y();
+                
+                // 构建结果
+                let mut result = HashMap::new();
+                result.insert("x".to_string(), serde_json::Value::Number(mouse_x.into()));
+                result.insert("y".to_string(), serde_json::Value::Number(mouse_y.into()));
+                result.insert("color".to_string(), serde_json::Value::String(hex_color));
+                result.insert("note".to_string(), serde_json::Value::String("macOS 系统拾色器已启动，请在 Colors 应用中选择颜色".to_string()));
+                
+                Ok(result)
+            },
+            Err(e) => {
+                // 如果系统拾色器启动失败，返回错误信息
+                let mut result = HashMap::new();
+                result.insert("x".to_string(), serde_json::Value::Number(0.into()));
+                result.insert("y".to_string(), serde_json::Value::Number(0.into()));
+                result.insert("color".to_string(), serde_json::Value::String("#808080".to_string()));
+                result.insert("note".to_string(), serde_json::Value::String(format!("无法启动系统拾色器: {}", e)));
+                
+                Ok(result)
+            }
         }
-        
-        // 获取屏幕像素颜色
-        let color = GetPixel(screen_dc, point.x, point.y);
-        
-        // 释放DC
-        ReleaseDC(hdc, screen_dc);
-        
-        // 解析RGB值 (GetPixel返回的COLORREF格式是0x00bbggrr)
-        let b = ((color >> 16) & 0xFF) as u8;
-        let g = ((color >> 8) & 0xFF) as u8;
-        let r = (color & 0xFF) as u8;
-        
-        // 转换为十六进制颜色字符串
-        let hex_color = format!("#{:02X}{:02X}{:02X}", r, g, b);
-        
-        // 构建结果
+    }
+    
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    {
+        // 其他操作系统 - 返回默认值
         let mut result = HashMap::new();
-        result.insert("x".to_string(), serde_json::Value::Number(point.x.into()));
-        result.insert("y".to_string(), serde_json::Value::Number(point.y.into()));
-        result.insert("color".to_string(), serde_json::Value::String(hex_color.clone()));
+        result.insert("x".to_string(), serde_json::Value::Number(0.into()));
+        result.insert("y".to_string(), serde_json::Value::Number(0.into()));
+        result.insert("color".to_string(), serde_json::Value::String("#808080".to_string()));
+        result.insert("note".to_string(), serde_json::Value::String("Color picker not supported on this platform".to_string()));
         
         Ok(result)
     }
+}
+
+// macOS 辅助函数 - 启动 macOS 系统颜色选择器
+fn start_macos_color_picker() -> Result<String, String> {
+    use std::process::Command;
+    
+    println!("正在启动 macOS 系统颜色选择器...");
+    
+    // 同时启动两个颜色工具以提供最佳体验
+    let mut success_count = 0;
+    
+    // 1. 启动AppleScript颜色选择器，设置为RGB模式
+    let script = r#"tell application "System Events" to tell process "Color Picker"
+    set frontmost to true
+    tell menu 1 of menu bar 1
+        click menu item "RGB Sliders"
+    end tell
+end tell
+
+choose color default color {32768, 32768, 32768}"#;
+    
+    if let Ok(_child) = Command::new("osascript")
+        .arg("-e")
+        .arg(script)
+        .spawn()
+    {
+        println!("macOS 系统颜色选择器已启动（RGB模式）");
+        success_count += 1;
+    }
+    
+    // 2. 同时启动DigitalColor Meter以显示详细的颜色信息（包括RGB）
+    // if let Ok(_child) = Command::new("open")
+    //     .arg("-a")
+    //     .arg("DigitalColor Meter")
+    //     .spawn()
+    // {
+    //     println!("DigitalColor Meter 已启动，显示详细的颜色信息");
+    //     success_count += 1;
+    // }
+    
+    if success_count > 0 {
+        // 等待一下让颜色选择器完全打开
+        std::thread::sleep(std::time::Duration::from_millis(1000));
+        Ok("#808080".to_string())
+    } else {
+        Err("无法启动系统颜色选择器".to_string())
+    }
+}
+
+// macOS 辅助函数 - 获取鼠标X坐标
+fn get_mouse_position_macos() -> i32 {
+    use std::process::Command;
+    
+    // 尝试使用 AppleScript 获取鼠标位置
+    match Command::new("osascript")
+        .args(&["-e", "tell application \"System Events\" to get x of position of mouse"])
+        .output()
+    {
+        Ok(output) => {
+            if let Ok(position_str) = String::from_utf8(output.stdout) {
+                if let Ok(x) = position_str.trim().parse::<i32>() {
+                    return x;
+                }
+            }
+        },
+        Err(_) => {
+            println!("无法获取鼠标 X 坐标，使用默认值");
+        }
+    }
+    
+    // 如果 AppleScript 失败，返回默认值
+    100
+}
+
+// macOS 辅助函数 - 获取鼠标Y坐标
+fn get_mouse_position_macos_y() -> i32 {
+    use std::process::Command;
+    
+    // 尝试使用 AppleScript 获取鼠标位置
+    match Command::new("osascript")
+        .args(&["-e", "tell application \"System Events\" to get y of position of mouse"])
+        .output()
+    {
+        Ok(output) => {
+            if let Ok(position_str) = String::from_utf8(output.stdout) {
+                if let Ok(y) = position_str.trim().parse::<i32>() {
+                    return y;
+                }
+            }
+        },
+        Err(_) => {
+            println!("无法获取鼠标 Y 坐标，使用默认值");
+        }
+    }
+    
+    // 如果 AppleScript 失败，返回默认值
+    100
 }
 
 // 辅助函数：计算两种颜色的欧氏距离（颜色相似度）

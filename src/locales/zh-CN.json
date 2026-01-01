@@ -32,5 +32,10 @@
   "icns.error.sizeTooSmall": "图片尺寸太小，当前尺寸为",
   "icns.error.requiredSize": "生成ICNS需要的最小尺寸为",
   "icns.success.title": "生成成功",
-  "icns.success.message": "ICNS文件已成功生成！"
+  "icns.success.message": "ICNS文件已成功生成！",
+  "colorPicker.macos.title": "系统Colors面板已启动！",
+  "colorPicker.macos.message": "请使用Colors面板中的拾色器拾取颜色。",
+  "colorPicker.macos.error.title": "无法获取系统Colors面板的颜色值",
+  "colorPicker.macos.error.message": "打开系统Colors面板失败: {error}",
+  "colorPicker.macos.error.fallback": "请手动打开\"系统偏好设置 > 其他 > 颜色选择器\""
 }
