@@ -436,41 +436,45 @@ fn start_macos_color_picker() -> Result<String, String> {
     
     println!("正在启动 macOS 系统颜色选择器...");
     
-    // 同时启动两个颜色工具以提供最佳体验
-    let mut success_count = 0;
-    
-    // 1. 启动AppleScript颜色选择器，设置为RGB模式
-    let script = r#"tell application "System Events" to tell process "Color Picker"
-    set frontmost to true
-    tell menu 1 of menu bar 1
-        click menu item "RGB Sliders"
-    end tell
-end tell
-
-choose color default color {32768, 32768, 32768}"#;
-    
+    // 首先启动颜色选择器
     if let Ok(_child) = Command::new("osascript")
         .arg("-e")
-        .arg(script)
+        .arg("choose color default color {32768, 32768, 32768}")
         .spawn()
     {
-        println!("macOS 系统颜色选择器已启动（RGB模式）");
-        success_count += 1;
-    }
-    
-    // 2. 同时启动DigitalColor Meter以显示详细的颜色信息（包括RGB）
-    // if let Ok(_child) = Command::new("open")
-    //     .arg("-a")
-    //     .arg("DigitalColor Meter")
-    //     .spawn()
-    // {
-    //     println!("DigitalColor Meter 已启动，显示详细的颜色信息");
-    //     success_count += 1;
-    // }
-    
-    if success_count > 0 {
-        // 等待一下让颜色选择器完全打开
-        std::thread::sleep(std::time::Duration::from_millis(1000));
+        println!("macOS 系统颜色选择器已启动");
+        
+        // 等待一下让颜色选择器启动
+        std::thread::sleep(std::time::Duration::from_millis(1500));
+        
+        // 尝试切换到RGB模式（如果可能的话）
+        let rgb_script = r#"tell application "System Events"
+    tell process "Color Picker"
+        try
+            set frontmost to true
+            delay 0.5
+            tell menu 1 of menu bar 1
+                click menu item "RGB Sliders"
+            end tell
+        on error errMsg
+            -- 如果无法切换到RGB模式，继续使用默认模式
+            return "继续使用默认颜色选择器模式"
+        end try
+    end tell
+end tell"#;
+        
+        let _ = Command::new("osascript")
+            .arg("-e")
+            .arg(rgb_script)
+            .output();
+        
+        // 启动DigitalColor Meter以显示详细的颜色信息（包括RGB）
+        let _ = Command::new("open")
+            .arg("-a")
+            .arg("DigitalColor Meter")
+            .spawn();
+        
+        println!("DigitalColor Meter 已启动，显示详细的颜色信息");
         Ok("#808080".to_string())
     } else {
         Err("无法启动系统颜色选择器".to_string())
