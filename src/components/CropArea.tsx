@@ -205,7 +205,6 @@ const CropArea: React.FC<CropAreaProps> = ({
   const getHandleAtPosition = (clientX: number, clientY: number): ResizeHandle | null => {
     if (!cropRef.current || !imageRef.current) return null;
     
-    const cropRect = cropRef.current.getBoundingClientRect();
     const imageRect = imageRef.current.getBoundingClientRect();
     
     // 计算图片的宽高比和显示尺寸
