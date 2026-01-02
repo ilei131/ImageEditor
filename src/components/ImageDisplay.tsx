@@ -23,6 +23,10 @@ interface ImageDisplayProps {
   onCropAreaChange?: (cropArea: CropAreaInfo) => void;
   onCropApply?: (cropArea: CropAreaInfo) => void;
   onCropCancel?: () => void;
+  backgroundInfo?: {
+    is_dark: boolean;
+    brightness: number;
+  } | null;
 }
 
 const ImageDisplay = forwardRef<HTMLImageElement, ImageDisplayProps>(({ 
@@ -31,7 +35,10 @@ const ImageDisplay = forwardRef<HTMLImageElement, ImageDisplayProps>(({
   isDraggingOver = false,
   imageInfo,
   isCropping = false,
-  onCropAreaChange
+  onCropAreaChange,
+  onCropApply,
+  onCropCancel,
+  backgroundInfo
 }, ref) => {
   // 裁剪区域状态
   const [cropArea, setCropArea] = useState<CropAreaInfo | null>(null);
@@ -155,6 +162,7 @@ const ImageDisplay = forwardRef<HTMLImageElement, ImageDisplayProps>(({
           onCropAreaChange={handleCropAreaChange}
           previewRef={previewRef}
           imageRef={imageRef}
+          backgroundInfo={backgroundInfo}
         />
       )}
     </div>

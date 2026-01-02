@@ -36,6 +36,11 @@ interface ColorItem {
   percentage: number;
 }
 
+interface BackgroundInfo {
+  is_dark: boolean;
+  brightness: number;
+}
+
 function App() {
   const { t } = useI18n();
   const [selectedImage, setSelectedImage] = useState<ImageInfo | null>(null);
@@ -49,6 +54,7 @@ function App() {
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showResizeDialog, setShowResizeDialog] = useState(false);
   const [isBooting] = useState(false);
+  const [backgroundInfo, setBackgroundInfo] = useState<BackgroundInfo | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const colorPickerWindowRef = useRef<WebviewWindow | null>(null);
@@ -107,6 +113,15 @@ function App() {
       setNewWidth(result.width);
       setNewHeight(result.height);
       
+      // 获取背景亮度信息
+      try {
+        const bgInfo = await invoke<BackgroundInfo>("get_background_info", { path });
+        setBackgroundInfo(bgInfo);
+      } catch (error) {
+        console.error("Failed to get background info:", error);
+        setBackgroundInfo({ is_dark: false, brightness: 0.5 }); // 默认值
+      }
+      
       // 读取图片文件并转换为DataURL
       const buffer = await readFile(path);
       const blob = new Blob([buffer], { type: getImageMimeType(path) });
@@ -118,8 +133,45 @@ function App() {
     }
   };
   
+  // 检测图片背景亮度（用于File对象）
+  const detectBackgroundBrightness = (img: HTMLImageElement): Promise<BackgroundInfo> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d')!;
+      
+      // 缩小图片到100x100以提高性能
+      canvas.width = 100;
+      canvas.height = 100;
+      ctx.drawImage(img, 0, 0, 100, 100);
+      
+      const imageData = ctx.getImageData(0, 0, 100, 100);
+      const data = imageData.data;
+      
+      let totalBrightness = 0;
+      const totalPixels = 100 * 100;
+      
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        
+        // 使用加权平均值计算亮度（人眼对绿色更敏感）
+        const brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0;
+        totalBrightness += brightness;
+      }
+      
+      const averageBrightness = totalBrightness / totalPixels;
+      const isDark = averageBrightness < 0.5;
+      
+      resolve({
+        is_dark: isDark,
+        brightness: averageBrightness
+      });
+    });
+  };
+
   // 加载图片（从File对象）
-  const loadImageFromFile = (file: File) => {
+  const loadImageFromFile = async (file: File) => {
     try {
       console.log("Loading image from file:", file);
       // 创建Blob URL用于预览
@@ -152,6 +204,14 @@ function App() {
         setNewWidth(image.width);
         setNewHeight(image.height);
         setCropArea(null);
+        
+        // 对于File对象，我们使用Canvas来简单检测背景亮度
+        detectBackgroundBrightness(image).then(bgInfo => {
+          setBackgroundInfo(bgInfo);
+        }).catch(error => {
+          console.error("Failed to detect background brightness:", error);
+          setBackgroundInfo({ is_dark: false, brightness: 0.5 }); // 默认值
+        });
       };
       image.onerror = (error) => {
         console.error("Image loading failed:", error);
@@ -939,6 +999,7 @@ function App() {
                         imageInfo={selectedImage}
                         isCropping={isCropping}
                         onCropAreaChange={handleCropAreaChange}
+                        backgroundInfo={backgroundInfo}
                       />
                     )}
                   </div>

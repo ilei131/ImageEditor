@@ -30,6 +30,13 @@ pub struct ColorItem {
     pub percentage: f32,
 }
 
+// 定义图片背景亮度信息结构体
+#[derive(Serialize, Deserialize, Debug)]
+pub struct BackgroundInfo {
+    pub is_dark: bool,
+    pub brightness: f32, // 0.0 (黑色) 到 1.0 (白色)
+}
+
 #[tauri::command]
 fn list_images(path: &str) -> Result<Vec<ImageInfo>, String> {
     let path = Path::new(path);
@@ -153,7 +160,45 @@ fn get_image_info(path: &str) -> Result<ImageInfo, String> {
     })
 }
 
-
+// 分析图片背景亮度
+#[tauri::command]
+fn get_background_info(path: &str) -> Result<BackgroundInfo, String> {
+    // 打开图片
+    let img = ImageReader::open(path)
+        .map_err(|e| format!("Failed to open image: {}", e))?
+        .decode()
+        .map_err(|e| format!("Failed to decode image: {}", e))?;
+    
+    // 缩小图片尺寸以提高性能
+    let resized = img.resize(100, 100, image::imageops::FilterType::Triangle);
+    let (width, height) = resized.dimensions();
+    let total_pixels = width * height;
+    
+    // 计算平均亮度
+    let mut total_brightness = 0.0;
+    
+    for y in 0..height {
+        for x in 0..width {
+            let pixel = resized.get_pixel(x, y);
+            let channels = pixel.channels();
+            let r = channels[0] as f32;
+            let g = channels[1] as f32;
+            let b = channels[2] as f32;
+            
+            // 使用加权平均值计算亮度（人眼对绿色更敏感）
+            let brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0;
+            total_brightness += brightness;
+        }
+    }
+    
+    let average_brightness = total_brightness / total_pixels as f32;
+    let is_dark = average_brightness < 0.5; // 阈值设为0.5
+    
+    Ok(BackgroundInfo {
+        is_dark,
+        brightness: average_brightness,
+    })
+}
 
 // 裁剪图片
 #[tauri::command]
@@ -687,6 +732,7 @@ pub fn run() {
             generate_icns,
             rotate_image,
             extract_colors,
+            get_background_info,
             get_mouse_position_and_color
         ])
         .run(context)

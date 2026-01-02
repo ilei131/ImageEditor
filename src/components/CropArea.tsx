@@ -14,24 +14,35 @@ interface CropAreaProps {
   onCropAreaChange: (cropArea: { x: number; y: number; width: number; height: number }) => void;
   previewRef: React.RefObject<HTMLDivElement | null>;
   imageRef: React.RefObject<HTMLImageElement>;
+  backgroundInfo?: {
+    is_dark: boolean;
+    brightness: number;
+  } | null;
 }
+
+type ResizeHandle = 
+  | 'nw' | 'n' | 'ne' 
+  | 'w' | 'center' | 'e'
+  | 'sw' | 's' | 'se';
 
 const CropArea: React.FC<CropAreaProps> = ({ 
   cropArea, 
   selectedImage, 
   onCropAreaChange, 
   previewRef,
-  imageRef
+  imageRef,
+  backgroundInfo
 }) => {
-  const [isResizing, setIsResizing] = useState(false);
-  const [isMoving, setIsMoving] = useState(false);
-  const [resizeHandle, setResizeHandle] = useState<'nw' | 'se' | null>(null);
-  const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [resizeHandle, setResizeHandle] = useState<ResizeHandle | null>(null);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
   const [initialCropArea, setInitialCropArea] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [hoveredHandle, setHoveredHandle] = useState<ResizeHandle | null>(null);
   
   const cropRef = useRef<HTMLDivElement>(null);
-  
-  // 计算裁剪区域的CSS样式（基于图片显示尺寸的百分比）
+  const labelRef = useRef<HTMLDivElement>(null);
+
+  // 计算裁剪区域的CSS样式
   const cropStyle = useMemo(() => {
     if (!imageRef.current) return {};
     
@@ -46,11 +57,9 @@ const CropArea: React.FC<CropAreaProps> = ({
     // 确定图片的实际显示尺寸（考虑object-fit: contain）
     let actualDisplayedWidth, actualDisplayedHeight;
     if (containerAspectRatio > imageAspectRatio) {
-      // 容器更宽，图片高度填满容器
       actualDisplayedHeight = containerHeight;
       actualDisplayedWidth = containerHeight * imageAspectRatio;
     } else {
-      // 容器更高，图片宽度填满容器
       actualDisplayedWidth = containerWidth;
       actualDisplayedHeight = containerWidth / imageAspectRatio;
     }
@@ -59,7 +68,7 @@ const CropArea: React.FC<CropAreaProps> = ({
     const imageOffsetX = (containerWidth - actualDisplayedWidth) / 2;
     const imageOffsetY = (containerHeight - actualDisplayedHeight) / 2;
     
-    // 计算缩放比例 - 原图尺寸与实际显示尺寸的比例
+    // 计算缩放比例
     const scale = selectedImage.width / actualDisplayedWidth;
     
     // 计算裁剪区域在实际显示尺寸中的位置和大小
@@ -74,264 +83,407 @@ const CropArea: React.FC<CropAreaProps> = ({
     const widthPercent = (cropDisplayedWidth / containerWidth) * 100;
     const heightPercent = (cropDisplayedHeight / containerHeight) * 100;
     
-    // 使用百分比设置裁剪区域样式，确保裁剪框始终显示在正确位置
+    // 根据背景亮度确定虚线颜色
+    const borderColor = backgroundInfo?.is_dark 
+      ? 'rgba(255, 255, 255, 0.9)'  // 深色背景用白色虚线
+      : 'rgba(0, 0, 0, 0.8)';       // 浅色背景用黑色虚线
+
     return {
       left: `${xPercent}%`,
       top: `${yPercent}%`,
       width: `${widthPercent}%`,
-      height: `${heightPercent}%`
+      height: `${heightPercent}%`,
+      border: `1px dashed ${borderColor}`,
+      boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.1)'
     };
-  }, [cropArea, selectedImage, imageRef]);
-  
-  // 处理鼠标按下事件（开始移动或调整大小）
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
+  }, [cropArea, selectedImage, imageRef, backgroundInfo]);
+
+  // 获取控制点的样式（尺寸和颜色等，不包含位置）
+  const getHandleStyle = (handle: ResizeHandle) => {
+    const baseSize = 8;
+    const hoverSize = 12;
+    const size = hoveredHandle === handle ? hoverSize : baseSize;
     
-    if (!cropRef.current || !imageRef.current) return;
+    return {
+      width: `${size}px`,
+      height: `${size}px`,
+      backgroundColor: hoveredHandle === handle ? '#0051d5' : '#007aff',
+      border: '2px solid white',
+      borderRadius: '50%',
+      cursor: getCursorStyle(handle),
+      boxShadow: hoveredHandle === handle 
+        ? '0 4px 12px rgba(0, 122, 255, 0.6), 0 0 0 1px rgba(0, 122, 255, 0.4)'
+        : '0 2px 8px rgba(0, 122, 255, 0.4), 0 0 0 1px rgba(0, 122, 255, 0.3)',
+      zIndex: 1000,
+      transition: 'all 0.2s ease'
+    };
+  };
+
+  // 获取光标样式
+  const getCursorStyle = (handle: ResizeHandle): string => {
+    const cursorMap: Record<ResizeHandle, string> = {
+      'nw': 'nw-resize',
+      'n': 'n-resize',
+      'ne': 'ne-resize',
+      'w': 'w-resize',
+      'center': 'move',
+      'e': 'e-resize',
+      'sw': 'sw-resize',
+      's': 's-resize',
+      'se': 'se-resize'
+    };
+    return cursorMap[handle];
+  };
+
+  // 获取分辨率标签位置
+  const getLabelPosition = (handle: ResizeHandle | null) => {
+    if (!handle) {
+      return {
+        top: '-40px',
+        left: '50%',
+        transform: 'translateX(-50%)'
+      };
+    }
+    
+    const offset = 12; // 标签距离控制点的偏移量
+    
+    switch (handle) {
+      case 'nw':
+        return {
+          top: `${offset}px`,
+          left: `${offset}px`
+        };
+      case 'n':
+        return {
+          top: `${offset}px`,
+          left: '50%',
+          transform: 'translateX(-50%)'
+        };
+      case 'ne':
+        return {
+          top: `${offset}px`,
+          right: `${offset}px`
+        };
+      case 'w':
+        return {
+          top: '50%',
+          left: `${offset}px`,
+          transform: 'translateY(-50%)'
+        };
+      case 'e':
+        return {
+          top: '50%',
+          right: `${offset}px`,
+          transform: 'translateY(-50%)'
+        };
+      case 'sw':
+        return {
+          bottom: `${offset}px`,
+          left: `${offset}px`
+        };
+      case 's':
+        return {
+          bottom: `${offset}px`,
+          left: '50%',
+          transform: 'translateX(-50%)'
+        };
+      case 'se':
+        return {
+          bottom: `${offset}px`,
+          right: `${offset}px`
+        };
+      default:
+        return {
+          top: '-40px',
+          left: '50%',
+          transform: 'translateX(-50%)'
+        };
+    }
+  };
+
+  // 检测点击在哪个控制点上
+  const getHandleAtPosition = (clientX: number, clientY: number): ResizeHandle | null => {
+    if (!cropRef.current || !imageRef.current) return null;
     
     const cropRect = cropRef.current.getBoundingClientRect();
     const imageRect = imageRef.current.getBoundingClientRect();
     
-    // 计算图片的宽高比
+    // 计算图片的宽高比和显示尺寸
     const imageAspectRatio = selectedImage.width / selectedImage.height;
     const containerAspectRatio = imageRect.width / imageRect.height;
     
-    // 确定图片的实际显示尺寸（考虑object-fit: contain）
     let actualDisplayedWidth, actualDisplayedHeight;
     if (containerAspectRatio > imageAspectRatio) {
-      // 容器更宽，图片高度填满容器
       actualDisplayedHeight = imageRect.height;
       actualDisplayedWidth = imageRect.height * imageAspectRatio;
     } else {
-      // 容器更高，图片宽度填满容器
       actualDisplayedWidth = imageRect.width;
       actualDisplayedHeight = imageRect.width / imageAspectRatio;
     }
     
-    // 计算图片在容器中的偏移量
     const imageOffsetX = (imageRect.width - actualDisplayedWidth) / 2;
     const imageOffsetY = (imageRect.height - actualDisplayedHeight) / 2;
-    
-    // 计算缩放比例 - 原图尺寸与实际显示尺寸的比例
     const scale = selectedImage.width / actualDisplayedWidth;
     
-    // 计算鼠标相对于裁剪框的位置
-    const relativeX = e.clientX - cropRect.left;
-    const relativeY = e.clientY - cropRect.top;
+    // 计算鼠标在图片上的位置
+    const mouseX = (clientX - imageRect.left - imageOffsetX) * scale;
+    const mouseY = (clientY - imageRect.top - imageOffsetY) * scale;
     
-    // 计算鼠标在图片上的绝对位置（考虑图片在容器中的偏移）
-    const mouseX = (e.clientX - imageRect.left - imageOffsetX) * scale;
-    const mouseY = (e.clientY - imageRect.top - imageOffsetY) * scale;
+    // 检查是否在控制点上（增加检测范围）
+    const handleSize = 20 * scale; // 检测范围
+    const { x, y, width, height } = cropArea;
     
-    // 定义手柄尺寸（容器像素）
-    const handleSize = 15;
-    
-    // 保存初始状态
-    setInitialCropArea(cropArea);
-    
-    // 检查是否点击在左上角手柄
-    if (relativeX <= handleSize && relativeY <= handleSize) {
-      setIsResizing(true);
-      setResizeHandle('nw');
-      setCropStart({ x: mouseX, y: mouseY });
-      return;
+    // 角点检测
+    if (mouseX >= x - handleSize && mouseX <= x + handleSize &&
+        mouseY >= y - handleSize && mouseY <= y + handleSize) {
+      return 'nw';
+    }
+    if (mouseX >= x + width - handleSize && mouseX <= x + width + handleSize &&
+        mouseY >= y - handleSize && mouseY <= y + handleSize) {
+      return 'ne';
+    }
+    if (mouseX >= x - handleSize && mouseX <= x + handleSize &&
+        mouseY >= y + height - handleSize && mouseY <= y + height + handleSize) {
+      return 'sw';
+    }
+    if (mouseX >= x + width - handleSize && mouseX <= x + width + handleSize &&
+        mouseY >= y + height - handleSize && mouseY <= y + height + handleSize) {
+      return 'se';
     }
     
-    // 检查是否点击在右下角手柄
-    if (relativeX >= cropRect.width - handleSize && relativeY >= cropRect.height - handleSize) {
-      setIsResizing(true);
-      setResizeHandle('se');
-      setCropStart({ x: mouseX, y: mouseY });
-      return;
+    // 边点检测
+    if (mouseY >= y - handleSize && mouseY <= y + handleSize &&
+        mouseX >= x && mouseX <= x + width) {
+      return 'n';
+    }
+    if (mouseY >= y + height - handleSize && mouseY <= y + height + handleSize &&
+        mouseX >= x && mouseX <= x + width) {
+      return 's';
+    }
+    if (mouseX >= x - handleSize && mouseX <= x + handleSize &&
+        mouseY >= y && mouseY <= y + height) {
+      return 'w';
+    }
+    if (mouseX >= x + width - handleSize && mouseX <= x + width + handleSize &&
+        mouseY >= y && mouseY <= y + height) {
+      return 'e';
     }
     
-    // 点击在裁剪框内部，设置为移动模式
-    setIsMoving(true);
-    setCropStart({ x: mouseX, y: mouseY });
+    // 检查是否在裁剪区域内（移动模式）
+    if (mouseX >= x && mouseX <= x + width &&
+        mouseY >= y && mouseY <= y + height) {
+      return 'center';
+    }
+    
+    return null;
   };
-  
-  // 使用ref来跟踪上一次处理鼠标移动的位置
-  const lastProcessedPosition = useRef<{ x: number; y: number } | null>(null);
 
-  // 处理鼠标移动事件（原生DOM事件）
-  const handleMouseMoveNative = useCallback((e: MouseEvent) => {
-    // 更新光标样式
-    if (!cropRef.current || !imageRef.current || !previewRef.current) return;
-    
-    const imageRect = imageRef.current.getBoundingClientRect();
-    
-    // 计算图片的宽高比
-    const imageAspectRatio = selectedImage.width / selectedImage.height;
-    const containerAspectRatio = imageRect.width / imageRect.height;
-    
-    // 确定图片的实际显示尺寸（考虑object-fit: contain）
-    let actualDisplayedWidth, actualDisplayedHeight;
-    if (containerAspectRatio > imageAspectRatio) {
-      // 容器更宽，图片高度填满容器
-      actualDisplayedHeight = imageRect.height;
-      actualDisplayedWidth = imageRect.height * imageAspectRatio;
-    } else {
-      // 容器更高，图片宽度填满容器
-      actualDisplayedWidth = imageRect.width;
-      actualDisplayedHeight = imageRect.width / imageAspectRatio;
-    }
-    
-    // 计算图片在容器中的偏移量
-    const imageOffsetX = (imageRect.width - actualDisplayedWidth) / 2;
-    const imageOffsetY = (imageRect.height - actualDisplayedHeight) / 2;
-    
-    // 计算缩放比例 - 原图尺寸与实际显示尺寸的比例
-    const scale = selectedImage.width / actualDisplayedWidth;
-    
-    // 计算鼠标在图片上的位置（考虑图片在容器中的偏移）
-    const mouseX = (e.clientX - imageRect.left - imageOffsetX) * scale;
-    const mouseY = (e.clientY - imageRect.top - imageOffsetY) * scale;
-    
-    // 更新光标样式
-    const handleSize = 15;
-    let cursorStyle = 'default';
-    
-    // 将手柄大小从显示尺寸转换为原图尺寸
-    const handleSizeOriginal = handleSize * scale; // 因为scale = 原图宽度 / 显示宽度
-    
-    // 检查是否在左上角手柄上
-    if (mouseX >= cropArea.x - handleSizeOriginal && 
-        mouseX <= cropArea.x + handleSizeOriginal && 
-        mouseY >= cropArea.y - handleSizeOriginal && 
-        mouseY <= cropArea.y + handleSizeOriginal) {
-      cursorStyle = 'nw-resize';
-    }
-    // 检查是否在右下角手柄上
-    else if (mouseX >= cropArea.x + cropArea.width - handleSizeOriginal && 
-             mouseX <= cropArea.x + cropArea.width + handleSizeOriginal && 
-             mouseY >= cropArea.y + cropArea.height - handleSizeOriginal && 
-             mouseY <= cropArea.y + cropArea.height + handleSizeOriginal) {
-      cursorStyle = 'se-resize';
-    }
-    // 检查是否在裁剪区域内
-    else if (mouseX >= cropArea.x && mouseX <= cropArea.x + cropArea.width && 
-             mouseY >= cropArea.y && mouseY <= cropArea.y + cropArea.height) {
-      cursorStyle = 'move';
-    }
-    
-    previewRef.current.style.cursor = cursorStyle;
-    
-    // 处理移动和调整大小逻辑
-    if ((!isResizing && !isMoving) || !cropStart || !initialCropArea) return;
-    
+  // 处理鼠标按下事件
+  const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    // 计算鼠标在图片上的当前位置（考虑图片在容器中的偏移）
+    const handle = getHandleAtPosition(e.clientX, e.clientY);
+    if (!handle) return;
+    
+    setIsDragging(true);
+    setResizeHandle(handle);
+    
+    if (!imageRef.current) return;
+    
+    const imageRect = imageRef.current.getBoundingClientRect();
+    const imageAspectRatio = selectedImage.width / selectedImage.height;
+    const containerAspectRatio = imageRect.width / imageRect.height;
+    
+    let actualDisplayedWidth, actualDisplayedHeight;
+    if (containerAspectRatio > imageAspectRatio) {
+      actualDisplayedHeight = imageRect.height;
+      actualDisplayedWidth = imageRect.height * imageAspectRatio;
+    } else {
+      actualDisplayedWidth = imageRect.width;
+      actualDisplayedHeight = imageRect.width / imageAspectRatio;
+    }
+    
+    const imageOffsetX = (imageRect.width - actualDisplayedWidth) / 2;
+    const imageOffsetY = (imageRect.height - actualDisplayedHeight) / 2;
+    const scale = selectedImage.width / actualDisplayedWidth;
+    
+    const mouseX = (e.clientX - imageRect.left - imageOffsetX) * scale;
+    const mouseY = (e.clientY - imageRect.top - imageOffsetY) * scale;
+    
+    setDragStart({ x: mouseX, y: mouseY });
+    setInitialCropArea(cropArea);
+    
+    // 更新光标
+    if (previewRef.current) {
+      previewRef.current.style.cursor = getCursorStyle(handle);
+    }
+  };
+
+  // 处理鼠标移动事件
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!imageRef.current || !previewRef.current) return;
+    
+    if (!isDragging || !resizeHandle || !dragStart || !initialCropArea) {
+      // 更新hover状态和光标
+      const handle = getHandleAtPosition(e.clientX, e.clientY);
+      setHoveredHandle(handle);
+      
+      if (previewRef.current) {
+        previewRef.current.style.cursor = handle ? getCursorStyle(handle) : 'default';
+      }
+      return;
+    }
+    
+    const imageRect = imageRef.current.getBoundingClientRect();
+    const imageAspectRatio = selectedImage.width / selectedImage.height;
+    const containerAspectRatio = imageRect.width / imageRect.height;
+    
+    let actualDisplayedWidth, actualDisplayedHeight;
+    if (containerAspectRatio > imageAspectRatio) {
+      actualDisplayedHeight = imageRect.height;
+      actualDisplayedWidth = imageRect.height * imageAspectRatio;
+    } else {
+      actualDisplayedWidth = imageRect.width;
+      actualDisplayedHeight = imageRect.width / imageAspectRatio;
+    }
+    
+    const imageOffsetX = (imageRect.width - actualDisplayedWidth) / 2;
+    const imageOffsetY = (imageRect.height - actualDisplayedHeight) / 2;
+    const scale = selectedImage.width / actualDisplayedWidth;
+    
     const currentMouseX = (e.clientX - imageRect.left - imageOffsetX) * scale;
     const currentMouseY = (e.clientY - imageRect.top - imageOffsetY) * scale;
     
-    // 计算鼠标移动的距离
-    const deltaX = currentMouseX - cropStart.x;
-    const deltaY = currentMouseY - cropStart.y;
+    const deltaX = currentMouseX - dragStart.x;
+    const deltaY = currentMouseY - dragStart.y;
     
-    if (isResizing && resizeHandle) {
-      // 调整大小
-      if (resizeHandle === 'nw') {
-        // 左上角调整
-        let newWidth = initialCropArea.width - deltaX;
-        let newHeight = initialCropArea.height - deltaY;
-        let newX = initialCropArea.x + deltaX;
-        let newY = initialCropArea.y + deltaY;
+    let newCropArea = { ...initialCropArea };
+    
+    // 根据控制点类型调整裁剪区域
+    switch (resizeHandle) {
+      case 'nw': // 左上角 - 同时调整宽高
+        newCropArea.x = initialCropArea.x + deltaX;
+        newCropArea.y = initialCropArea.y + deltaY;
+        newCropArea.width = initialCropArea.width - deltaX;
+        newCropArea.height = initialCropArea.height - deltaY;
+        break;
         
-        // 确保裁剪区域宽度和高度大于0
-        if (newWidth < 10 || newHeight < 10) return;
+      case 'ne': // 右上角 - 同时调整宽高
+        newCropArea.y = initialCropArea.y + deltaY;
+        newCropArea.width = initialCropArea.width + deltaX;
+        newCropArea.height = initialCropArea.height - deltaY;
+        break;
         
-        // 确保裁剪区域在图片范围内
-        newX = Math.max(0, newX);
-        newY = Math.max(0, newY);
-        newWidth = Math.min(selectedImage.width - newX, newWidth);
-        newHeight = Math.min(selectedImage.height - newY, newHeight);
+      case 'sw': // 左下角 - 同时调整宽高
+        newCropArea.x = initialCropArea.x + deltaX;
+        newCropArea.width = initialCropArea.width - deltaX;
+        newCropArea.height = initialCropArea.height + deltaY;
+        break;
         
-        onCropAreaChange({ x: newX, y: newY, width: newWidth, height: newHeight });
-      } else if (resizeHandle === 'se') {
-        // 右下角调整
-        let newWidth = initialCropArea.width + deltaX;
-        let newHeight = initialCropArea.height + deltaY;
+      case 'se': // 右下角 - 同时调整宽高
+        newCropArea.width = initialCropArea.width + deltaX;
+        newCropArea.height = initialCropArea.height + deltaY;
+        break;
         
-        // 确保裁剪区域宽度和高度大于0
-        if (newWidth < 10 || newHeight < 10) return;
+      case 'n': // 上边 - 只调整高度
+        newCropArea.y = initialCropArea.y + deltaY;
+        newCropArea.height = initialCropArea.height - deltaY;
+        break;
         
-        // 确保裁剪区域在图片范围内
-        newWidth = Math.min(selectedImage.width - initialCropArea.x, newWidth);
-        newHeight = Math.min(selectedImage.height - initialCropArea.y, newHeight);
+      case 's': // 下边 - 只调整高度
+        newCropArea.height = initialCropArea.height + deltaY;
+        break;
         
-        onCropAreaChange({ 
-          x: initialCropArea.x, 
-          y: initialCropArea.y, 
-          width: newWidth, 
-          height: newHeight 
-        });
-      }
-    } else if (isMoving) {
-      // 移动裁剪区域
-      let newX = initialCropArea.x + deltaX;
-      let newY = initialCropArea.y + deltaY;
-      
-      // 确保裁剪区域在图片范围内
-      const finalX = Math.max(0, Math.min(newX, selectedImage.width - initialCropArea.width));
-      const finalY = Math.max(0, Math.min(newY, selectedImage.height - initialCropArea.height));
-      
-      onCropAreaChange({ ...initialCropArea, x: finalX, y: finalY });
+      case 'w': // 左边 - 只调整宽度
+        newCropArea.x = initialCropArea.x + deltaX;
+        newCropArea.width = initialCropArea.width - deltaX;
+        break;
+        
+      case 'e': // 右边 - 只调整宽度
+        newCropArea.width = initialCropArea.width + deltaX;
+        break;
+        
+      case 'center': // 移动裁剪区域
+        newCropArea.x = initialCropArea.x + deltaX;
+        newCropArea.y = initialCropArea.y + deltaY;
+        break;
     }
-  }, [isMoving, isResizing, cropStart, initialCropArea, resizeHandle, cropArea, selectedImage, onCropAreaChange]);
-  
-  // 处理鼠标释放事件
-  const handleMouseUp = () => {
-    setIsMoving(false);
-    setIsResizing(false);
-    setResizeHandle(null);
-    setCropStart(null);
-    setInitialCropArea(null);
-    // 重置最后处理的位置
-    lastProcessedPosition.current = null;
-  };
-  
-  // 添加全局事件监听以确保鼠标释放事件总是能被捕获
-  useEffect(() => {
-    const handleGlobalMouseUp = () => {
-      setIsMoving(false);
-      setIsResizing(false);
-      setResizeHandle(null);
-      setCropStart(null);
-      setInitialCropArea(null);
-    };
     
-    document.addEventListener('mouseup', handleGlobalMouseUp);
-    document.addEventListener('mousemove', handleMouseMoveNative);
+    // 确保裁剪区域不超出图片边界
+    newCropArea.x = Math.max(0, Math.min(newCropArea.x, selectedImage.width - newCropArea.width));
+    newCropArea.y = Math.max(0, Math.min(newCropArea.y, selectedImage.height - newCropArea.height));
+    newCropArea.width = Math.min(newCropArea.width, selectedImage.width - newCropArea.x);
+    newCropArea.height = Math.min(newCropArea.height, selectedImage.height - newCropArea.y);
+    
+    onCropAreaChange(newCropArea);
+    
+    e.preventDefault();
+    e.stopPropagation();
+  }, [isDragging, resizeHandle, dragStart, initialCropArea, selectedImage, onCropAreaChange]);
+
+  // 处理鼠标释放事件
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+    setResizeHandle(null);
+    setDragStart(null);
+    setInitialCropArea(null);
+    setHoveredHandle(null);
+    
+    if (previewRef.current) {
+      previewRef.current.style.cursor = 'default';
+    }
+  }, [previewRef]);
+
+  // 添加全局事件监听
+  useEffect(() => {
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
     
     return () => {
-      document.removeEventListener('mouseup', handleGlobalMouseUp);
-      document.removeEventListener('mousemove', handleMouseMoveNative);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [handleMouseMoveNative]);
-  
-  // 处理鼠标移动事件（React事件）
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    handleMouseMoveNative(e.nativeEvent);
-  }, [handleMouseMoveNative]);
-  
+  }, [handleMouseMove, handleMouseUp]);
+
   return (
     <div 
       className="crop-area"
       ref={cropRef}
       style={cropStyle}
       onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
     >
-      <div className="crop-info">
+      {/* 实时尺寸显示标签 */}
+      <div 
+        ref={labelRef}
+        className="crop-dimensions-label"
+        style={{
+          position: 'absolute',
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          color: 'white',
+          padding: '4px 8px',
+          borderRadius: '4px',
+          fontSize: '12px',
+          fontWeight: 'bold',
+          whiteSpace: 'nowrap',
+          zIndex: 1001,
+          pointerEvents: 'none',
+          visibility: isDragging && resizeHandle ? 'visible' : 'hidden',
+          ...getLabelPosition(resizeHandle)
+        }}
+      >
         {Math.round(cropArea.width)} × {Math.round(cropArea.height)}
       </div>
-      {/* 实际的DOM元素作为裁剪手柄 */}
-      <div className="resize-handle resize-handle-nw" />
-      <div className="resize-handle resize-handle-se" />
+      
+      {/* 8个控制点 */}
+      <div className="resize-handle resize-handle-nw" style={getHandleStyle('nw')} />
+      <div className="resize-handle resize-handle-n" style={getHandleStyle('n')} />
+      <div className="resize-handle resize-handle-ne" style={getHandleStyle('ne')} />
+      <div className="resize-handle resize-handle-w" style={getHandleStyle('w')} />
+      <div className="resize-handle resize-handle-e" style={getHandleStyle('e')} />
+      <div className="resize-handle resize-handle-sw" style={getHandleStyle('sw')} />
+      <div className="resize-handle resize-handle-s" style={getHandleStyle('s')} />
+      <div className="resize-handle resize-handle-se" style={getHandleStyle('se')} />
     </div>
   );
 };
