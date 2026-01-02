@@ -69,7 +69,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, disabled = false }) => 
     },
     {
       id: 'language',
-      label: language === 'zh-CN' ? '中文' : 'English',
+      label: language === 'zh-CN' ? '🇨🇳' : '🇺🇸',  // 只显示图标，不显示文字
       children: [
         { id: 'zh-CN', label: '中文', icon: '🇨🇳' },
         { id: 'en-US', label: 'English', icon: '🇺🇸' },
