@@ -21,3 +21,6 @@ npm run tauri build
 ![2](./screenshot/2.png)
 ![3](./screenshot/3.png)
 ![4](./screenshot/4.png)
+## Disclaimer
+The editing operations on the picture cannot be restored. 
+Please back up the picture before use to avoid any loss.
