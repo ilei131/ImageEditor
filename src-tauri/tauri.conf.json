@@ -36,7 +36,8 @@
         "maximizable": false,
         "minimizable": false,
         "closable": true,
-        "hiddenTitle": true
+        "hiddenTitle": true,
+        "visible":false
       }
     ],
     "security": {
