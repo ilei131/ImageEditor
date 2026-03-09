@@ -79,14 +79,14 @@ function App() {
         // 动画完成后移除元素
         setTimeout(() => {
           splashScreen.remove();
-        }, 500);
+        }, 300);
       }
     };
 
     // 延迟一点隐藏启动画面，确保React应用完全渲染
     const timer = setTimeout(() => {
       hideSplashScreen();
-    }, 500);
+    }, 300);
 
     return () => {
       clearTimeout(timer);
