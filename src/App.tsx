@@ -70,8 +70,26 @@ function App() {
   // 全局拖拽事件可能会阻止组件内部事件的正确触发
   useEffect(() => {
     // 我们不再需要全局拖拽事件监听，因为DragDropDetector组件会处理自己的拖拽事件
+
+    // 隐藏启动画面
+    const hideSplashScreen = () => {
+      const splashScreen = document.getElementById('splash-screen');
+      if (splashScreen) {
+        splashScreen.classList.add('hidden');
+        // 动画完成后移除元素
+        setTimeout(() => {
+          splashScreen.remove();
+        }, 500);
+      }
+    };
+
+    // 延迟一点隐藏启动画面，确保React应用完全渲染
+    const timer = setTimeout(() => {
+      hideSplashScreen();
+    }, 500);
+
     return () => {
-      // 确保没有残留的全局事件监听
+      clearTimeout(timer);
     };
   }, []);
 
