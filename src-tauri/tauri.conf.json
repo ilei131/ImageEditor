@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "image_editor",
+  "productName": "Image Editor",
   "version": "0.1.0",
   "identifier": "com.zhanggf.file-flower",
   "build": {
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "image_editor",
+        "title": "Image Editor",
         "width": 800,
         "height": 600,
         "dragDropEnabled": true
@@ -37,7 +37,7 @@
         "minimizable": false,
         "closable": true,
         "hiddenTitle": true,
-        "visible":false
+        "visible": false
       }
     ],
     "security": {

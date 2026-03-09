@@ -28,6 +28,8 @@
   "app.hello": "Hello",
   "app.generateICNS": "Generate ICNS",
   "app.error.title": "Error",
+  "app.error.noImage.title": "Notice",
+  "app.error.noImage.message": "Please open an image first",
   "icns.error.title": "Resolution Error",
   "icns.error.sizeTooSmall": "Image size is too small. Current size: ",
   "icns.error.requiredSize": "Minimum size required for ICNS generation:",

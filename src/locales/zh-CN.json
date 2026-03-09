@@ -28,6 +28,8 @@
   "app.hello": "Hello",
   "app.generateICNS": "生成ICNS",
   "app.error.title": "错误",
+  "app.error.noImage.title": "提示",
+  "app.error.noImage.message": "请先打开图片",
   "icns.error.title": "分辨率错误",
   "icns.error.sizeTooSmall": "图片尺寸太小，当前尺寸为",
   "icns.error.requiredSize": "生成ICNS需要的最小尺寸为",

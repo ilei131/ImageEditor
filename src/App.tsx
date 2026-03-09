@@ -876,51 +876,69 @@ function App() {
         handleSelectImage();
         break;
       case 'save-as':
-        handleSaveAs();
+        if (selectedImage && selectedImage.path) {
+          handleSaveAs();
+        } else {
+          message(t('app.error.noImage.message'), {
+            title: t('app.error.noImage.title'),
+            kind: "info"
+          });
+        }
         break;
       case 'resize':
         if (selectedImage && selectedImage.path) {
           setShowResizeDialog(true);
         } else {
-          console.error("No image path available for resizing");
+          message(t('app.error.noImage.message'), {
+            title: t('app.error.noImage.title'),
+            kind: "info"
+          });
         }
         break;
       case 'toggle-crop':
-        // 开启裁剪模式
         if (selectedImage) {
           setIsCropping(true);
+        } else {
+          message(t('app.error.noImage.message'), {
+            title: t('app.error.noImage.title'),
+            kind: "info"
+          });
         }
         break;
       case 'generate-icns':
-        // 生成icns功能
         if (selectedImage && selectedImage.path) {
           handleGenerateICNS();
         } else {
-          console.error("No image path available for generating ICNS");
+          message(t('app.error.noImage.message'), {
+            title: t('app.error.noImage.title'),
+            kind: "info"
+          });
         }
         break;
       case 'rotate':
-        // 旋转图片功能
         if (selectedImage && selectedImage.path) {
           handleRotateImage();
         } else {
-          console.error("No image path available for rotating");
+          message(t('app.error.noImage.message'), {
+            title: t('app.error.noImage.title'),
+            kind: "info"
+          });
         }
         break;
       case 'extract-colors':
-        // 提取颜色功能
         if (selectedImage && selectedImage.path) {
           handleExtractColors();
         } else {
-          console.error("No image path available for extracting colors");
+          message(t('app.error.noImage.message'), {
+            title: t('app.error.noImage.title'),
+            kind: "info"
+          });
         }
         break;
       case 'pick-color':
-        // 颜色拾取功能
-        event.stopPropagation(); // 阻止事件冒泡
+        event.stopPropagation();
         handleColorPick();
         break;
-      // 其他工具可以在这里添加
       default:
         console.log(`Selected tool: ${toolId}`);
     }
