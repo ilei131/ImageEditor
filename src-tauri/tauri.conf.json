@@ -17,7 +17,8 @@
         "title": "Image Editor",
         "width": 800,
         "height": 600,
-        "dragDropEnabled": true
+        "dragDropEnabled": true,
+        "backgroundColor": "#667eea"
       },
       {
         "label": "color-picker",

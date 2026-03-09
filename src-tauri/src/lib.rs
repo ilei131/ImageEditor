@@ -818,6 +818,7 @@ pub fn run() {
                         let app_handle = window.app_handle().clone();
                         // 先隐藏窗口（产生视觉上的立即关闭效果）
                         let _ = window.hide();
+                        api.prevent_close();
                         // 然后异步退出应用
                         tauri::async_runtime::spawn(async move {
                             app_handle.exit(0);
