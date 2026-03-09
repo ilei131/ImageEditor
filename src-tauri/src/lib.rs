@@ -5,6 +5,7 @@ use std::fs;
 use std::io::Cursor;
 use std::path::Path;
 use std::sync::Arc;
+use tauri::Manager;
 use tokio::sync::RwLock;
 
 // 导入图片处理库
@@ -808,6 +809,24 @@ pub fn run() {
             get_background_info,
             get_mouse_position_and_color
         ])
+        .on_window_event(|window, event| {
+            match event {
+                tauri::WindowEvent::CloseRequested { api, .. } => {
+                    // 只有主窗口的关闭请求才会退出应用
+                    if window.label() == "main" {
+                        println!("主窗口关闭请求，立即退出应用");
+                        let app_handle = window.app_handle().clone();
+                        // 先隐藏窗口（产生视觉上的立即关闭效果）
+                        let _ = window.hide();
+                        // 然后异步退出应用
+                        tauri::async_runtime::spawn(async move {
+                            app_handle.exit(0);
+                        });
+                    }
+                }
+                _ => {}
+            }
+        })
         .run(context)
         .expect("error while running tauri application");
 }
